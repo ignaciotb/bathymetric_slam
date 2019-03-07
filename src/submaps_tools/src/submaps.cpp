@@ -191,7 +191,6 @@ std::vector<SubmapObj, Eigen::aligned_allocator<SubmapObj>> readSubmapsInDir(con
                 swath_cnt++;
                 prev_direction = euler[0];
             }
-            std::cout << "Swath: " << swath_cnt << std::endl;
             submaps_set.push_back(SubmapObj(submap_cnt, swath_cnt, *submap_ptr));
             submap_cnt ++;
          }
