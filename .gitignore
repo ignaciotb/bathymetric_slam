@@ -1,0 +1,22 @@
+*~
+*.pyc
+*.autosave
+
+# Folders
+bin/*
+build/*
+
+# Qt files
+*.config
+*.creator
+*.creator.user
+*.files
+*.includes
+
+# G2O files
+*.g2o
+
+# Images
+*.png
+
+*.cereal
