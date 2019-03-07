@@ -1,7 +1,7 @@
 # Bathymetric Graph SLAM
 
 SLAM framework for underwater vehicles.
-The algorithm gets a set of bathymetric submaps as input and corrects the global map constructed while refining the vehicle trajectory through a map-to-map registration followed by a pose-graph optimization. 
+The algorithm gets a set of bathymetric submaps as input and corrects the global map constructed while refining the vehicle trajectory through a map-to-map registration followed by a pose graph optimization. 
 
 ## Dependencies (Ubuntu 16.04)
 * AUVLIB [here](https://github.com/nilsbore/auvlib) 
@@ -20,12 +20,17 @@ make -j4
 
 ### Available apps
 There are two applications avalible under the `bin` folder.
+##### Simulated data
 In order to test the framework with simulated data in the form of .pdc files, use the toy dataset `map_small` under `sim_data`.
 You can visualize both the ground truth map and vehicle trajectory in the visualizer. To start the optimization process, hit "q".
 ```
 ./test_slam_simulation /path/to/repository/sim_data/map_small/
 ```
+The simulation outputs a measure of the error contained in the map, as well as the height maps and error plots as .png files.
+To increase the complexity of the sim dataset, add more Gaussian noise to the vehicle's position estimate.
+In order to adapt the performance of the algorithm to the dataset, tune the weights of the edges of the pose-graph, the GICP registration parameters and the Ceres-based optimizer.
 
+##### Real data
 To run the SLAM solution with real data from a bathymetric survey, currently the input is in the form of a cereal file containing all the necessary information from your bathymetric files.
 Check the AUVLIB [data project](https://github.com/nilsbore/auvlib/tree/master/example_projects/data_project) for tools to parse your files. 
 ```
