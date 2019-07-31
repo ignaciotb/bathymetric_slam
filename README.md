@@ -34,9 +34,9 @@ In order to adapt the performance of the algorithm to the dataset, tune the weig
 
 ##### SLAM with real data
 To run the SLAM solution with real data from a bathymetric survey, currently the input is in the form of a cereal file containing all the necessary information from your bathymetric files.
-You can find a small survey with an ROV [here](https://strands.pdc.kth.se/public/IROS-2019-Bathymetry/).
+You can find a real survey carried out with an ROV [here](https://strands.pdc.kth.se/public/IROS-2019-Bathymetry/).
 ```
-./test_slam_real --file /path/to/datasets/"your_data".cereal
+./test_slam_real --file /path/to/datasets/your_data.cereal
 ```
 
 ### Generating your own data from the SMARC simulator
