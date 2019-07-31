@@ -20,11 +20,11 @@ make -j4
 ```
 
 ### Available apps
-There are two applications avalible under the `bin` folder.
-If you compile the apps with the macro "INTERACTIVE" = 1 [here](https://github.com/ignaciotb/bathymetric_slam/tree/master/src/apps/src), you'll have to hit "q" for every step to be executed. This will allow you to visualize the before/after of the GICP registration per submap and the global graph optimization.
+There are two applications available under the `bin` folder.
+If you compile the apps with the macro "INTERACTIVE" = 1 [here](https://github.com/ignaciotb/bathymetric_slam/tree/master/src/apps/src), you'll have to hit "q" for every step to be executed. This will allow you to visualize the before/after of the GICP registration per submap and the global graph optimization (recommended while finding your way around/debugging).
 
 ##### SLAM with simulated data
-In order to test the framework with simulated data in the form of .pdc files, use the toy dataset `map_small` under `sim_data` or a bigger dataset [here](https://strands.pdc.kth.se/public/IROS-2019-Bathymetry/). The current script optimizes the graph with Ceres, but the app outputs a "graph.g2o" file which you can solve with G2O if preferred. 
+In order to test the framework with data from the [SMARC simulator](https://github.com/smarc-project), use the toy dataset `map_small` under `sim_data`. The current script optimizes the graph with Ceres, but the app outputs a "graph.g2o" file which you can solve with G2O if preferred. 
 You can visualize both the ground truth map and vehicle trajectory in the visualizer. To start the optimization process, hit "q".
 ```
 ./test_slam_simulation --folder /path/to/folder/
@@ -42,7 +42,7 @@ You can find a real survey carried out with an ROV [here](https://strands.pdc.kt
 ```
 
 ### Generating your own data from the SMARC simulator
-You can generate bigger and more complex bathymetric surveys from user-defined environments within the SMARC simulator.
+You can generate bigger and more complex bathymetric surveys from user-defined environments within the SMARC simulator [like this one](https://strands.pdc.kth.se/public/IROS-2019-Bathymetry/).
 To install it, follow the instructions [here](https://github.com/smarc-project/rosinstall).
 To create and save the surveys with the default AUV and environment, run
 ```
@@ -54,4 +54,4 @@ Through the pop-up window, navigate the AUV over the area to map. You can press 
 When you have finished with the survey, move the `.pdc` files with the submaps generated from `~/.ros/` to a new folder and run the framework as explained above.
 
 ### Generating your own cereal files from real surveys
-Take a look at the [AUVLIB](https://github.com/nilsbore/auvlib) toolbox in order to parse MBES, SSS, navigation, etc data from the most common formats into .cereal files.
+Take a look at the [AUVLIB](https://github.com/nilsbore/auvlib) toolbox in order to parse real MBES, SSS, navigation, etc data from the most common formats into .cereal files.
