@@ -21,6 +21,7 @@ make -j4
 
 ### Available apps
 There are two applications avalible under the `bin` folder.
+If you compile the apps with the macro "INTERACTIVE" = 1 [here](https://github.com/ignaciotb/bathymetric_slam/tree/master/src/apps/src), you'll have to hit "q" for every step to be executed. This will allow you to visualize the before/after of the GICP registration per submap and the global graph optimization.
 
 ##### SLAM with simulated data
 In order to test the framework with simulated data in the form of .pdc files, use the toy dataset `map_small` under `sim_data`. Specify the name of the output file with the graph in G2O format as a second argument. The current script optimizes the graph with Ceres, but with this file you can run your optimization in G2O if preferred. 
@@ -33,8 +34,8 @@ To increase the complexity of the sim dataset, add more Gaussian noise to the ve
 In order to adapt the performance of the algorithm to the dataset, tune the weights of the edges of the pose-graph, the GICP registration parameters and the Ceres solver.
 
 ##### SLAM with real data
-To run the SLAM solution with real data from a bathymetric survey, currently the input is in the form of a cereal file containing all the necessary information from your bathymetric files.
-You can find a real survey carried out with an ROV [here](https://strands.pdc.kth.se/public/IROS-2019-Bathymetry/).
+To run the SLAM solution with real data from a bathymetric survey, currently the input is in the form of a cereal file containing all the necessary information from your data files.
+You can find a real survey carried out with an ROV [here](https://strands.pdc.kth.se/public/IROS-2019-Bathymetry/). Download it, adjust the framework values, and test it.
 ```
 ./test_slam_real --file /path/to/datasets/your_data.cereal
 ```
