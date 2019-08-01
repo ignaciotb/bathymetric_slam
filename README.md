@@ -34,7 +34,7 @@ The simulation outputs a measure of the error contained in the map, as well as t
 To increase the complexity of the sim dataset, increase the Gaussian noise to the vehicle's position estimate.
 In order to adapt the performance of the algorithm to the dataset, adjust the weights of the edges of the pose-graph accordingly and tune the GICP and the Ceres solver parameters.
 The algorithm is by default tuned for the toy example `map_small`.
-You can find a bigger and more challenging dataset [here](https://strands.pdc.kth.se/public/IROS-2019-Bathymetry/).
+You can find a bigger and more challenging dataset from the simulator [here](https://strands.pdc.kth.se/public/IROS-2019-Bathymetry/).
 
 ##### SLAM with real data
 To run the SLAM solution with real data from a bathymetric survey, currently the input is in the form of a cereal file containing all the necessary information from your data files.
@@ -44,7 +44,7 @@ You can find a real survey carried out with an ROV [here](https://strands.pdc.kt
 ```
 
 ### Generating your own data from the SMARC simulator
-You can generate bigger and more complex bathymetric surveys from user-defined environments within the SMARC simulator [like this one](https://strands.pdc.kth.se/public/IROS-2019-Bathymetry/).
+You can generate bigger and more complex bathymetric surveys from user-defined environments within the SMARC simulator.
 To install it, follow the instructions [here](https://github.com/smarc-project/rosinstall).
 To create and save the surveys with the default AUV and environment, run
 ```
