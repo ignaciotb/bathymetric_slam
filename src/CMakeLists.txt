@@ -27,7 +27,7 @@ find_package(Ceres REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(PCL 1.8 REQUIRED)
 find_package(OpenCV REQUIRED)
-find_package(G2O REQUIRED)
+find_package(g2o REQUIRED)
 
 # AUVLIB stuff
  # find_package(LIBIGL REQUIRED QUIET)

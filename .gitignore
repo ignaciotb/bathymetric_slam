@@ -12,6 +12,8 @@ build/*
 *.creator.user
 *.files
 *.includes
+*.cflags
+*.cxxflags
 
 # G2O files
 *.g2o

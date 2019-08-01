@@ -59,7 +59,6 @@ Matrix<double, 6,6> generateGaussianNoise(GaussianGen& transSampler,
 
 void addNoiseToSubmap(GaussianGen& transSampler,
                       GaussianGen& rotSampler,
-                      const Matrix<double, 6,6>& information,
                       SubmapObj& submap,
                       Isometry3f& poseDRt){
     // Noise to rotation
@@ -82,9 +81,4 @@ void addNoiseToSubmap(GaussianGen& transSampler,
 
     pcl::transformPointCloud(submap.submap_pcl_, submap.submap_pcl_, poseDRt.matrix());
     submap.submap_tf_ = poseDRt * submap.submap_tf_;
-
-    // Store information matrix
-    submap.submap_info_ = information;
-
-
 }

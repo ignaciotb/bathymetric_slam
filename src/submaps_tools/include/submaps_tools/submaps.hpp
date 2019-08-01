@@ -46,7 +46,7 @@ private:
 public:
 
     int submap_id_;
-    unsigned int swath_id_;
+    int swath_id_;
     PointCloudT submap_pcl_;
     std::vector<int> overlaps_idx_;
     Eigen::Vector3d colors_;

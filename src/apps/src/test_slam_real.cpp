@@ -25,6 +25,9 @@
 #include "graph_optimization/ceres_optimizer.hpp"
 #include "graph_optimization/read_g2o.h"
 
+
+#define INTERACTIVE 1
+
 using namespace Eigen;
 using namespace std;
 using namespace g2o;
@@ -32,20 +35,19 @@ using namespace g2o;
 int main(int argc, char** argv){
 
     // Read submaps from folder
-    string folder_str;
+    string path_str;
     cxxopts::Options options("MyProgram", "One line description of MyProgram");
     options.add_options()
         ("help", "Print help")
-        ("folder", "Input folder", cxxopts::value(folder_str));
+        ("file", "Input ceres file", cxxopts::value(path_str));
 
     auto result = options.parse(argc, argv);
     if (result.count("help")) {
         cout << options.help({ "", "Group" }) << endl;
         exit(0);
     }
-    boost::filesystem::path submaps_path(folder_str);// / "submaps_full.cereal";
+    boost::filesystem::path submaps_path(path_str);// / "submaps_full.cereal";
     std_data::pt_submaps ss = std_data::read_data<std_data::pt_submaps>(submaps_path);
-    string outFilename = "graph.g2o";
 
     // Parse data structures
     SubmapsVec submaps_gt = parseSubmapsAUVlib(ss);
@@ -54,7 +56,7 @@ int main(int argc, char** argv){
     PointCloudT::Ptr cloud_ptr (new PointCloudT);
     pcl::UniformSampling<PointT> us_filter;
     us_filter.setInputCloud (cloud_ptr);
-    us_filter.setRadiusSearch(0.4);
+    us_filter.setRadiusSearch(0.1);
     pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor_filter;
     sor_filter.setMeanK (100);
     sor_filter.setStddevMulThresh(3);
@@ -93,13 +95,12 @@ int main(int argc, char** argv){
 
     SubmapObj submap_trg;
     SubmapsVec submaps_prev;
-    unsigned int current_swath = 0;
     double info_thres = 0.1;
     SubmapsVec submaps_reg;
     for(SubmapObj& submap_i: submaps_gt){
         std::cout << " ----------- Submap " << submap_i.submap_id_ << ", swath "
                   << submap_i.swath_id_ << " ------------"<< std::endl;
-        current_swath = submap_i.swath_id_;
+
         // Skip loop closure search on first submap
         if(submap_i.submap_id_ > 0){
             for(SubmapObj& submap_k: submaps_reg){
@@ -112,6 +113,18 @@ int main(int argc, char** argv){
             submap_i.findOverlaps(submaps_prev);
             submaps_prev.clear();
         }
+
+        // Add submap_i to registered set (just for visualization here)
+        submaps_reg.push_back(submap_i);
+
+#if INTERACTIVE == 1
+        // Update visualizer
+        visualizer->updateVisualizer(submaps_reg);
+        while(!viewer.wasStopped ()){
+            viewer.spinOnce ();
+        }
+        viewer.resetStoppedFlag();
+#endif
         // Create graph vertex i
         graph_obj->createNewVertex(submap_i);
 
@@ -119,9 +132,6 @@ int main(int argc, char** argv){
         if(submap_i.submap_id_ != 0 ){
             graph_obj->createDREdge(submap_i);
         }
-
-        // Add submap_i to registered set (just for visualization here)
-        submaps_reg.push_back(submap_i);
 
         // If potential loop closure detected
         SubmapObj submap_final = submap_i;
@@ -145,23 +155,31 @@ int main(int argc, char** argv){
         submaps_reg.pop_back(); // Remove unregistered submap_i
         submaps_reg.push_back(submap_final);    // Add registered submap_i
 
+#if INTERACTIVE == 1
         // Update visualizer
         visualizer->updateVisualizer(submaps_reg);
-        viewer.spinOnce ();
+        while(!viewer.wasStopped ()){
+            viewer.spinOnce ();
+        }
+        viewer.resetStoppedFlag();
+#endif
     }
 
     // Create initial graph estimate
     graph_obj->createInitialEstimate();
 
     // Plot Pose graph
+#if INTERACTIVE == 1
     visualizer->updateVisualizer(submaps_reg);
     visualizer->plotPoseGraphG2O(*graph_obj);
     while(!viewer.wasStopped ()){
         viewer.spinOnce ();
     }
     viewer.resetStoppedFlag();
+#endif
 
-    // Save graph to output g2o file (optimization can be run on G2O outside main)
+    // Save graph to output g2o file (optimization can be run with G2O)
+    string outFilename = "graph.g2o";
     graph_obj->saveG2OFile(outFilename);
 
     // Optimize graph

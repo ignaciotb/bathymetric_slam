@@ -37,7 +37,6 @@ Matrix<double, 6, 6> generateGaussianNoise(GaussianGen& transSampler,
 
 void addNoiseToSubmap(GaussianGen& transSampler,
                       GaussianGen& rotSampler,
-                      const Matrix<double, 6, 6> &information,
                       SubmapObj& submap, Isometry3f &poseDRt);
 
 

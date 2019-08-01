@@ -25,7 +25,7 @@ void BuildOptimizationProblem(const VectorOfConstraints& constraints,
         return;
     }
 
-    LossFunction* loss_function = NULL;
+    LossFunction* loss_function = nullptr;
     SubsetParameterization* z_local_param = new SubsetParameterization(3, std::vector<int>{2});
     SubsetParameterization* roll_pitch_local_param = new SubsetParameterization(3, std::vector<int>{0,1});
 
@@ -66,11 +66,11 @@ void BuildOptimizationProblem(const VectorOfConstraints& constraints,
         // Set boundaries for x, y and yaw
         problem->SetParameterLowerBound(pose_begin->second.p.data(), 0, pose_begin->second.p[0] - 10.0);
         problem->SetParameterUpperBound(pose_begin->second.p.data(), 0, pose_begin->second.p[0] + 10.0);
-        problem->SetParameterLowerBound(pose_begin->second.p.data(), 1, pose_begin->second.p[1] - 10.0);
-        problem->SetParameterUpperBound(pose_begin->second.p.data(), 1, pose_begin->second.p[1] + 10.0);
-
         problem->SetParameterLowerBound(pose_end->second.p.data(), 0, pose_end->second.p[0] - 10.0);
         problem->SetParameterUpperBound(pose_end->second.p.data(), 0, pose_end->second.p[0] + 10.0);
+
+        problem->SetParameterLowerBound(pose_begin->second.p.data(), 1, pose_begin->second.p[1] - 10.0);
+        problem->SetParameterUpperBound(pose_begin->second.p.data(), 1, pose_begin->second.p[1] + 10.0);
         problem->SetParameterLowerBound(pose_end->second.p.data(), 1, pose_end->second.p[1] - 10.0);
         problem->SetParameterUpperBound(pose_end->second.p.data(), 1, pose_end->second.p[1] + 10.0);
 
@@ -89,35 +89,34 @@ void BuildOptimizationProblem(const VectorOfConstraints& constraints,
 
 // Returns true if the solve was successful.
 bool SolveOptimizationProblem(ceres::Problem* problem) {
-  CHECK(problem != NULL);
+    CHECK(problem != NULL);
 
-  ceres::Solver::Options options;
-  options.max_num_iterations = 200;
-  options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
-//  options.minimizer_type = ceres::LINE_SEARCH;
-  options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
-  options.use_inner_iterations = false;
-  options.minimizer_progress_to_stdout = true;
-  options.num_threads = 3;
-  options.eta = 1e-5;
+    ceres::Solver::Options options;
+    options.max_num_iterations = 200;
+    options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+    //  options.minimizer_type = ceres::LINE_SEARCH;
+    options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
+    options.use_inner_iterations = false;
+    options.minimizer_progress_to_stdout = true;
+    options.num_threads = 3;
+    options.eta = 1e-5;
 
-  ceres::Solver::Summary summary;
-  ceres::Solve(options, problem, &summary);
+    ceres::Solver::Summary summary;
+    ceres::Solve(options, problem, &summary);
+    std::cout << summary.FullReport() << '\n';
 
-   std::cout << summary.FullReport() << '\n';
-
-  return summary.IsSolutionUsable();
+    return summary.IsSolutionUsable();
 }
 
 // Output the poses to the file with format: id x y z q_x q_y q_z q_w.
 bool OutputPoses(const std::string& filename, const MapOfPoses& poses) {
-  std::fstream outfile;
-  outfile.open(filename.c_str(), std::istream::out);
-  if (!outfile) {
-    LOG(ERROR) << "Error opening the file: " << filename;
-    return false;
-  }
-  for (std::map<int, Pose3d, std::less<int>,
+    std::fstream outfile;
+    outfile.open(filename.c_str(), std::istream::out);
+    if (!outfile) {
+        LOG(ERROR) << "Error opening the file: " << filename;
+        return false;
+    }
+    for (std::map<int, Pose3d, std::less<int>,
                 Eigen::aligned_allocator<std::pair<const int, Pose3d> > >::
            const_iterator poses_iter = poses.begin();
        poses_iter != poses.end(); ++poses_iter) {
@@ -129,8 +128,8 @@ bool OutputPoses(const std::string& filename, const MapOfPoses& poses) {
     outfile << pair.first << " " << pair.second.p.transpose() << " "
             << q.x() << " " << q.y() << " "
             << q.z() << " " << q.w() << '\n';
-  }
-  return true;
+    }
+    return true;
 }
 
 MapOfPoses ceresSolver(const std::string& outFilename){
@@ -163,7 +162,7 @@ MapOfPoses ceresSolver(const std::string& outFilename){
     //    const char *command = command_str.c_str();
     //    system(command);
 
-    return poses;
+return poses;
 }
 
 

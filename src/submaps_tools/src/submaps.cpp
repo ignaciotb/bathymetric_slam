@@ -29,7 +29,7 @@ SubmapObj::SubmapObj(const unsigned int& submap_id, const unsigned int& swath_id
     submap_pcl_.sensor_orientation_ = Eigen::Quaternionf(0,0,0,0);
     pcl::transformPointCloud(submap_pcl_, submap_pcl_, submap_tf_.matrix());
 
-    // Uncertainty on vehicle navigation
+    // Uncertainty on vehicle nav across submaps (assuming here that each has a similar length)
     std::vector<double> noiseTranslation;
     std::vector<double> noiseRotation;
     noiseTranslation.push_back(0.1);
@@ -177,8 +177,8 @@ std::vector<SubmapObj, Eigen::aligned_allocator<SubmapObj>> readSubmapsInDir(con
 
         PointCloudT::Ptr submap_ptr (new PointCloudT);
         // For every file in the dir
-        unsigned int submap_cnt = 0;
-        unsigned int swath_cnt = -1;
+        int submap_cnt = 0;
+        int swath_cnt = 0;
         double prev_direction = 0;
         Eigen::Vector3f euler;
         for(const std::string file: files){
@@ -186,10 +186,10 @@ std::vector<SubmapObj, Eigen::aligned_allocator<SubmapObj>> readSubmapsInDir(con
             std::cout << "Reading file: " << file_name << std::endl;
             readSubmapFile(file_name, submap_ptr);
             // Update swath counter
-            euler = submap_ptr->sensor_orientation_.toRotationMatrix().eulerAngles(0, 1, 2);
-            if(abs(euler[0] - prev_direction) > M_PI/1.2 && euler[0]>0.0001){
-                swath_cnt++;
-                prev_direction = euler[0];
+            euler = submap_ptr->sensor_orientation_.toRotationMatrix().eulerAngles(2, 1, 0);
+            if(abs(euler[2] - prev_direction) > M_PI/2 /*&& euler[0]>0.0001*/){
+                swath_cnt = swath_cnt + 1;
+                prev_direction = euler[2];
             }
             submaps_set.push_back(SubmapObj(submap_cnt, swath_cnt, *submap_ptr));
             submap_cnt ++;

@@ -71,9 +71,9 @@ void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapOb
     pcl::computeCovarianceMatrix(submap_from.submap_pcl_, xyz_centroid, cov_matrix);
 
     Eigen::VectorXd info_diag(3);
-    info_diag << 10000.0, 10000.0, 1000.0;  // High values for orientation components
+    info_diag << 10000.0, 10000.0, 1000.0;
     Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Zero();
-    information.block<3,3>(0,0) = cov_matrix.inverse().cast<double>();
+    information.block<3,3>(0,0) = cov_matrix.normalized().inverse().cast<double>();
     information.block<3,3>(3,3) = info_diag.asDiagonal();
     e->setInformation(information);
 
@@ -98,13 +98,15 @@ void GraphConstructor::findLoopClosures(SubmapObj& submap_i, const SubmapsVec& s
 void GraphConstructor::createInitialEstimate(){
 
     // Concatenate all the odometry constraints to compute the initial state
+    std::cout << "Number of DR edges " << drEdges_.size() << std::endl;
     for (size_t i =0; i < drEdges_.size(); ++i) {
-      EdgeSE3* e = drEdges_[i];
-      VertexSE3* from = static_cast<VertexSE3*>(e->vertex(0));
-      VertexSE3* to = static_cast<VertexSE3*>(e->vertex(1));
-      HyperGraph::VertexSet aux;
-      aux.insert(from);
-      e->initialEstimate(aux, to);
+        std::cout << "DR edge " << i << std::endl;
+        EdgeSE3* e = drEdges_[i];
+        VertexSE3* from = static_cast<VertexSE3*>(e->vertex(1));
+        VertexSE3* to = static_cast<VertexSE3*>(e->vertex(0));
+        HyperGraph::VertexSet aux;
+        aux.insert(from);
+        e->initialEstimate(aux, to);
     }
 }
 

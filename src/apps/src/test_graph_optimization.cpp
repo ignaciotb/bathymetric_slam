@@ -8,10 +8,13 @@
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <boost/filesystem.hpp>
+
 
 #include "registration/gicp_reg.hpp"
 #include "registration/utils_visualization.hpp"
 
+#include "submaps_tools/cxxopts.hpp"
 #include "submaps_tools/submaps.hpp"
 
 #include "graph_optimization/utils_g2o.hpp"
@@ -21,17 +24,31 @@
 
 #include "data_tools/benchmark.h"
 
+#define INTERACTIVE 1
+
 using namespace Eigen;
 using namespace std;
 using namespace g2o;
 
-int main(int, char** argv){
-    string submaps_dir = argv[1];
-    string outFilename = argv[2];
+int main(int argc, char** argv){
+
+    // Read submaps from folder
+    string path_str;
+    cxxopts::Options options("MyProgram", "One line description of MyProgram");
+    options.add_options()
+        ("help", "Print help")
+        ("folder", "Input folder with simulation data", cxxopts::value(path_str));
+
+    auto result = options.parse(argc, argv);
+    if (result.count("help")) {
+        cout << options.help({ "", "Group" }) << endl;
+        exit(0);
+    }
+    boost::filesystem::path submaps_path(path_str);
 
     // Read submaps pointclouds from folder
-    SubmapsVec submaps_gt, submaps_init, submaps_reg;
-    submaps_gt = readSubmapsInDir(submaps_dir);
+    SubmapsVec submaps_gt, submaps_reg;
+    submaps_gt = readSubmapsInDir(submaps_path.string());
 
     // Visualization
     PCLVisualizer viewer ("Submaps viewer");
@@ -54,7 +71,7 @@ int main(int, char** argv){
     Isometry3f poseDR(Isometry3f(Translation3f(Vector3f(0,0,0))) *
                       Isometry3f(Quaternionf(1,0,0,0)));
     for(SubmapObj& submap_i: submaps_gt){
-        addNoiseToSubmap(transSampler, rotSampler, information, submap_i, poseDR);
+        addNoiseToSubmap(transSampler, rotSampler, submap_i, poseDR);
     }
 
     // Benchmar Initial
@@ -71,29 +88,38 @@ int main(int, char** argv){
     SubmapObj submap_trg;
     SubmapsVec submaps_prev;
     for(SubmapObj& submap_i: submaps_gt){
-        // Skip first swath
-        if(submap_i.swath_id_ > 0){
-            // Find overlapping submaps only from previous swaths
-            submaps_prev.push_back(submap_i);
+        std::cout << " ----------- Submap " << submap_i.submap_id_ << ", swath "
+                  << submap_i.swath_id_ << " ------------"<< std::endl;
+        // Skip loop closure search on first submap
+        if(submap_i.submap_id_ > 0){
             for(SubmapObj& submap_k: submaps_reg){
-                if(submap_k.swath_id_ == submap_i.swath_id_-1){
+                // Don't look for overlaps between submaps of the same swath
+                if(submap_k.swath_id_ != submap_i.swath_id_ &&
+                        submap_k.submap_id_ != submap_i.submap_id_ - 1){
                     submaps_prev.push_back(submap_k);
                 }
             }
             submap_i.findOverlaps(submaps_prev);
+            submaps_prev.clear();
         }
+
         // Add submap to registered set
-        submaps_init.push_back(submap_i);
         submaps_reg.push_back(submap_i);
+
+#if INTERACTIVE == 1
         // Update visualizer
         visualizer->updateVisualizer(submaps_reg);
-        viewer.spinOnce ();
-
+        while(!viewer.wasStopped ()){
+            viewer.spinOnce ();
+        }
+        viewer.resetStoppedFlag();
+#endif
         // Create graph vertex i
         graph_obj->createNewVertex(submap_i);
 
         // Create DR edge i and store (skip submap 0)
         if(submap_i.submap_id_ != 0 ){
+            submap_i.submap_info_ = information;    // For simulation data only
             graph_obj->createDREdge(submap_i);
         }
 
@@ -115,10 +141,14 @@ int main(int, char** argv){
         submaps_reg.pop_back();
         submaps_reg.push_back(submap_i);
 
+#if INTERACTIVE == 1
         // Update visualizer
         visualizer->updateVisualizer(submaps_reg);
-        viewer.spinOnce ();
-
+        while(!viewer.wasStopped ()){
+            viewer.spinOnce ();
+        }
+        viewer.resetStoppedFlag();
+#endif
         // Cleaning
         submap_trg.submap_pcl_.clear();
         submaps_prev.clear();
@@ -127,13 +157,16 @@ int main(int, char** argv){
     graph_obj->createInitialEstimate();
 
     // Plot Pose graph
+#if INTERACTIVE == 1
     visualizer->plotPoseGraphG2O(*graph_obj);
     while(!viewer.wasStopped ()){
         viewer.spinOnce ();
     }
     viewer.resetStoppedFlag();
+#endif
 
-    // Save graph to output g2o file
+    // Save graph to output g2o file (optimization can be run with G2O)
+    string outFilename = "graph.g2o";
     graph_obj->saveG2OFile(outFilename);
 
     // Optimize graph
