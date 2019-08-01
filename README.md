@@ -21,9 +21,11 @@ make -j4
 ### Available apps
 There are two applications available under the `bin` folder.
 If you compile the apps with the macro "INTERACTIVE" = 1 [here](https://github.com/ignaciotb/bathymetric_slam/tree/master/src/apps/src), you'll have to hit "q" for every step to be executed. This will allow you to visualize the before/after of the GICP registration per submap and the global graph optimization (recommended while finding your way around/debugging).
+The process outputs .png images with the maps of bathymetry and consistency error.
+The current script optimizes the graph with Ceres, but the app outputs a "graph.g2o" file which you can solve with G2O if preferred. 
 
 ##### SLAM with simulated data
-In order to test the framework with data from the [SMARC simulator](https://github.com/smarc-project), use the toy dataset `map_small` under `sim_data`. The current script optimizes the graph with Ceres, but the app outputs a "graph.g2o" file which you can solve with G2O if preferred. 
+In order to test the framework with data from the [SMARC simulator](https://github.com/smarc-project), use the toy dataset `map_small` under `sim_data`. 
 You can visualize both the ground truth map and vehicle trajectory in the visualizer. To start the optimization process, hit "q".
 ```
 ./test_slam_simulation --folder /path/to/folder/
@@ -32,7 +34,7 @@ The simulation outputs a measure of the error contained in the map, as well as t
 To increase the complexity of the sim dataset, increase the Gaussian noise to the vehicle's position estimate.
 In order to adapt the performance of the algorithm to the dataset, adjust the weights of the edges of the pose-graph accordingly and tune the GICP and the Ceres solver parameters.
 The algorithm is by default tuned for the toy example `map_small`.
-You can find a bigger dataset [here](https://strands.pdc.kth.se/public/IROS-2019-Bathymetry/).
+You can find a bigger and more challenging dataset [here](https://strands.pdc.kth.se/public/IROS-2019-Bathymetry/).
 
 ##### SLAM with real data
 To run the SLAM solution with real data from a bathymetric survey, currently the input is in the form of a cereal file containing all the necessary information from your data files.
