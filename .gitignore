@@ -5,6 +5,7 @@
 # Folders
 bin/*
 build/*
+install/*
 
 # Qt files
 *.config

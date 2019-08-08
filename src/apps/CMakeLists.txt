@@ -24,7 +24,6 @@ target_link_libraries(test_slam_simulation
     benchmark
 )
 
-
 target_link_libraries(test_slam_real
    gicp_registration
    utils_g2o
