@@ -26,9 +26,12 @@
 #include "graph_optimization/graph_construction.hpp"
 #include "graph_optimization/ceres_optimizer.hpp"
 
+
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloudT;
 typedef pcl::PointXYZ PointT;
 using pcl::visualization::PCLVisualizer;
+typedef std::tuple<Eigen::Isometry3f, Eigen::Array3f> grid_point;
+typedef std::vector<grid_point, Eigen::aligned_allocator<grid_point> > grid;
 
 class SubmapsVisualizer{
 
@@ -37,6 +40,7 @@ private:
     int vp1_;
     int vp2_;
     PCLVisualizer viewer_;
+    int sample_cnt;
 
 public:
 
@@ -50,6 +54,11 @@ public:
 
     void plotPoseGraphCeres(const ceres::optimizer::MapOfPoses& poses, SubmapsVec &submaps_set);
 
+    void addCoordinateSystem(const Eigen::Isometry3f& tf);
+
+    void removeCoordinateSystem();
+
+    void visualizeGrid(const grid& grid);
 };
 
 #endif // UTILS_VISUALIZATION_HPP

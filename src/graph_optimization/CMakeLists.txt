@@ -2,11 +2,7 @@ project(graph_optimization)
 
 # set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/g2o_tools)
 
-include_directories(include)
-
-# add_executable(create_sphere
-#   src/create_sphere.cpp
-# )
+#include_directories(include)
 
 # Add libraries and executables
 add_library(utils_g2o
@@ -49,12 +45,6 @@ target_include_directories(ceres_optimizer PUBLIC
     $<INSTALL_INTERFACE:include>
     PRIVATE src)
 
-# set_target_properties(create_sphere PROPERTIES OUTPUT_NAME create_sphere${EXE_POSTFIX})
-
-# target_link_libraries(create_sphere
-# 	${G2O_LIBS}
-# )
-
 target_link_libraries(utils_g2o
 	submaps_tools
 	${G2O_LIBS}
@@ -75,4 +65,17 @@ target_link_libraries(read_g2o
 	${GFLAGS_LIBRARIES}
 )
 
-# target_link_libraries(pose_graph_3d ceres ${GFLAGS_LIBRARIES})
+# 'make install' to the correct locations (provided by GNUInstallDirs).
+install(TARGETS utils_g2o graph_construction ceres_optimizer read_g2o EXPORT GraphOptimizationConfig
+    ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR})  # This is for Windows
+install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+# This makes the project importable from the install directory
+# Put config file in per-project dir (name MUST match), can also
+# just go into 'cmake'.
+install(EXPORT GraphOptimizationConfig DESTINATION share/GraphOptimization/cmake)
+
+# This makes the project importable from the build directory
+export(TARGETS utils_g2o graph_construction ceres_optimizer read_g2o FILE GraphOptimizationConfig.cmake)

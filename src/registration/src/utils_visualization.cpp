@@ -174,3 +174,26 @@ void SubmapsVisualizer::plotPoseGraphCeres(const ceres::optimizer::MapOfPoses& p
     viewer_.spinOnce();
 }
 
+void SubmapsVisualizer::addCoordinateSystem(const Eigen::Isometry3f& tf){
+
+    viewer_.addCoordinateSystem(2.0, tf, "sample_" + std::to_string(this->sample_cnt++), vp2_);
+}
+
+void SubmapsVisualizer::removeCoordinateSystem(){
+
+    for(int i=0; i<sample_cnt; i++){
+        viewer_.removeCoordinateSystem("sample_" + std::to_string(i), vp2_);
+    }
+    sample_cnt = 0;
+    viewer_.spinOnce();
+}
+
+void SubmapsVisualizer::visualizeGrid(const grid& grid){
+
+    viewer_.removeAllCoordinateSystems(vp1_);
+    unsigned int cnt = 0;
+    for(grid_point tf_grid: grid){
+        viewer_.addCoordinateSystem(4.0, std::get<0>(tf_grid), "grid_" + std::to_string(cnt++), vp1_);
+    }
+    viewer_.spinOnce();
+}

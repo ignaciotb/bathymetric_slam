@@ -78,7 +78,7 @@ void SubmapObj::findOverlaps(std::vector<SubmapObj, Eigen::aligned_allocator<Sub
 }
 
 
-std::pair<int, corners> SubmapObj::getSubmapCorners(const SubmapObj& submap){
+std::pair<int, corners> getSubmapCorners(const SubmapObj& submap){
 
     // Transform point cloud back to map frame
     PointCloudT submap_pcl_aux;
@@ -106,7 +106,7 @@ std::pair<int, corners> SubmapObj::getSubmapCorners(const SubmapObj& submap){
 }
 
 
-bool SubmapObj::checkSubmapsOverlap(const corners submap_i_corners, const corners submap_k_corners){
+bool checkSubmapsOverlap(const corners submap_i_corners, const corners submap_k_corners){
 
     // Check every corner of i against every edge of k
     int inside;
@@ -135,7 +135,7 @@ bool SubmapObj::checkSubmapsOverlap(const corners submap_i_corners, const corner
 }
 
 // Segment goes a --> b
-bool SubmapObj::pointToLine(const Vector3d seg_a, const Vector3d seg_b, const Vector3d point_c){
+bool pointToLine(const Vector3d seg_a, const Vector3d seg_b, const Vector3d point_c){
 
     int s = (seg_b[1] - seg_a[1]) * point_c[0] + (seg_a[0] - seg_b[0]) * point_c[1] + (seg_b[0] * seg_a[1] - seg_a[0] * seg_b[1]);
 
@@ -311,3 +311,40 @@ SubmapsVec parseSubmapsAUVlib(std_data::pt_submaps& ss){
     return submaps_set;
 }
 
+void transformSubmapObj(SubmapObj& submap, Eigen::Isometry3f& poseDRt){
+
+    Eigen::Isometry3f submap_tf_trans;
+    submap_tf_trans.matrix().Identity();
+    submap_tf_trans.matrix().topLeftCorner(3,3) = submap.submap_tf_.rotation().transpose().matrix();
+    submap_tf_trans.matrix().topRightCorner(3,1) = -1*(submap.submap_tf_.rotation().transpose() *
+                                                       submap.submap_tf_.translation()).matrix();
+
+    pcl::transformPointCloud(submap.submap_pcl_, submap.submap_pcl_,
+                             (poseDRt * submap_tf_trans).matrix());
+    submap.submap_tf_ = poseDRt;
+
+}
+
+bool checkSubmapSize(const SubmapObj& submap_i){
+    std::pair<int, corners> submap_corners = getSubmapCorners(submap_i);
+    double grid_x, grid_y;
+    unsigned int k_next;
+    bool reject = false;
+    for(unsigned int k=0; k<2; k++){
+        k_next = k + 1;
+        // Check against four edges
+        Eigen::Vector3d corner_i = std::get<1>(submap_corners).at(k);
+        Eigen::Vector3d corner_i2 = std::get<1>(submap_corners).at(k_next);
+        if(k == 0){
+            grid_y = (corner_i - corner_i2).norm();
+        }
+        else if (k == 1){
+            grid_x = (corner_i - corner_i2).norm();
+        }
+    }
+
+    if(abs(grid_x/grid_y) < 0.4  || abs(grid_y/grid_x) < 0.4){
+        reject = true;
+    }
+    return reject;
+}

@@ -37,12 +37,6 @@ class SubmapObj{
 
 private:
 
-    std::pair<int, corners> getSubmapCorners(const SubmapObj& submap);
-
-    bool checkSubmapsOverlap(const corners submap_i_corners, const corners submap_k_corners);
-
-    bool pointToLine(const Vector3d seg_a, const Vector3d seg_b, const Vector3d point_c);
-
 public:
 
     int submap_id_;
@@ -80,6 +74,16 @@ double computeInfoInSubmap(const SubmapObj& submap);
 SubmapsVec parseSubmapsAUVlib(std_data::pt_submaps& ss);
 
 PointsT trackofSubmap(const SubmapsVec& submaps_set);
+
+void transformSubmapObj(SubmapObj& submap, Isometry3f& poseDRt);
+
+std::pair<int, corners> getSubmapCorners(const SubmapObj& submap);
+
+bool checkSubmapsOverlap(const corners submap_i_corners, const corners submap_k_corners);
+
+bool pointToLine(const Vector3d seg_a, const Vector3d seg_b, const Vector3d point_c);
+
+bool checkSubmapSize(const SubmapObj& submap_i);
 
 template <typename T> int sgn(T val) {
     return (T(0) < val) - (val < T(0));

@@ -56,3 +56,18 @@ target_link_libraries(gicp_registration PUBLIC
     benchmark
     ${PCL_LIBRARIES}
 )
+
+# 'make install' to the correct locations (provided by GNUInstallDirs).
+install(TARGETS utils_visualization gicp_registration EXPORT SubmapRegistrationConfig
+    ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR})  # This is for Windows
+install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+# This makes the project importable from the install directory
+# Put config file in per-project dir (name MUST match), can also
+# just go into 'cmake'.
+install(EXPORT SubmapRegistrationConfig DESTINATION share/SubmapRegistration/cmake)
+
+# This makes the project importable from the build directory
+export(TARGETS utils_visualization gicp_registration FILE SubmapRegistrationConfig.cmake)
