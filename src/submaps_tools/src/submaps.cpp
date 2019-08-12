@@ -32,12 +32,12 @@ SubmapObj::SubmapObj(const unsigned int& submap_id, const unsigned int& swath_id
     // Uncertainty on vehicle nav across submaps (assuming here that each has a similar length)
     std::vector<double> noiseTranslation;
     std::vector<double> noiseRotation;
-    noiseTranslation.push_back(0.1);
-    noiseTranslation.push_back(0.1);
+    noiseTranslation.push_back(0.01);
+    noiseTranslation.push_back(0.01);
     noiseTranslation.push_back(0.0001);
     noiseRotation.push_back(0.0001);
     noiseRotation.push_back(0.0001);
-    noiseRotation.push_back(0.1);
+    noiseRotation.push_back(0.001);
 
     Eigen::Matrix3d transNoise = Eigen::Matrix3d::Zero();
     for (int i = 0; i < 3; ++i)

@@ -74,10 +74,10 @@ void BuildOptimizationProblem(const VectorOfConstraints& constraints,
         problem->SetParameterLowerBound(pose_end->second.p.data(), 1, pose_end->second.p[1] - 10.0);
         problem->SetParameterUpperBound(pose_end->second.p.data(), 1, pose_end->second.p[1] + 10.0);
 
-        problem->SetParameterLowerBound(pose_begin->second.q.data(), 2, pose_begin->second.q[2] - M_PI/6.0);
-        problem->SetParameterUpperBound(pose_begin->second.q.data(), 2, pose_begin->second.q[2] + M_PI/6.0);
-        problem->SetParameterLowerBound(pose_end->second.q.data(), 2, pose_end->second.q[2] - M_PI/6.0);
-        problem->SetParameterUpperBound(pose_end->second.q.data(), 2, pose_end->second.q[2] + M_PI/6.0);
+        problem->SetParameterLowerBound(pose_begin->second.q.data(), 2, pose_begin->second.q[2] - M_PI/100.0);
+        problem->SetParameterUpperBound(pose_begin->second.q.data(), 2, pose_begin->second.q[2] + M_PI/100.0);
+        problem->SetParameterLowerBound(pose_end->second.q.data(), 2, pose_end->second.q[2] - M_PI/100.0);
+        problem->SetParameterUpperBound(pose_end->second.q.data(), 2, pose_end->second.q[2] + M_PI/100.0);
     }
 
     // Constrain the gauge freedom: set first AUV pose as anchor constant
