@@ -99,18 +99,16 @@ int main(int argc, char** argv){
     for(SubmapObj& submap_i: submaps_gt){
         std::cout << " ----------- Submap " << submap_i.submap_id_ << ", swath "
                   << submap_i.swath_id_ << " ------------"<< std::endl;
-        // Skip loop closure search on first submap
-        if(submap_i.submap_id_ > 0){
-            for(SubmapObj& submap_k: submaps_reg){
-                // Don't look for overlaps between submaps of the same swath
-                if(submap_k.swath_id_ != submap_i.swath_id_ &&
-                        submap_k.submap_id_ != submap_i.submap_id_ - 1){
-                    submaps_prev.push_back(submap_k);
-                }
+
+        for(SubmapObj& submap_k: submaps_reg){
+            // Don't look for overlaps between submaps of the same swath or the prev submap
+            if(submap_k.swath_id_ != submap_i.swath_id_ ||
+                    submap_k.submap_id_ != submap_i.submap_id_ - 1){
+                submaps_prev.push_back(submap_k);
             }
-            submap_i.findOverlaps(submaps_prev);
-            submaps_prev.clear();
         }
+        submap_i.findOverlaps(submaps_prev);
+        submaps_prev.clear();
 
         // Add submap_i to registered set (just for visualization here)
         submaps_reg.push_back(submap_i);
