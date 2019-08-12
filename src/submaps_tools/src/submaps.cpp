@@ -87,10 +87,11 @@ std::pair<int, corners> getSubmapCorners(const SubmapObj& submap){
     // Extract corners
     Eigen::MatrixXf points = submap_pcl_aux.getMatrixXfMap(3,4,0).transpose();
     double min_x, min_y, max_x, max_y;
-    min_x = points.col(0).minCoeff();   // min x
-    min_y = points.col(1).minCoeff();   // min y
-    max_x = points.col(0).maxCoeff();   // max x
-    max_y = points.col(1).maxCoeff();   // max y
+    double overlap_coverage = 0.6; // Reduce submap area to look for overlap by this factor
+    min_x = points.col(0).minCoeff() * overlap_coverage;   // min x
+    min_y = points.col(1).minCoeff() * overlap_coverage;   // min y
+    max_x = points.col(0).maxCoeff() * overlap_coverage;   // max x
+    max_y = points.col(1).maxCoeff() * overlap_coverage;   // max y
 
     // 2D transformation of the corners back to original place
     Eigen::Isometry2d submap_tf2d = (Eigen::Isometry2d) submap.submap_tf_.linear().cast<double>();
