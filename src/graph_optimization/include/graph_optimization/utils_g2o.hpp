@@ -37,7 +37,12 @@ Matrix<double, 6, 6> generateGaussianNoise(GaussianGen& transSampler,
 
 void addNoiseToSubmap(GaussianGen& transSampler,
                       GaussianGen& rotSampler,
-                      SubmapObj& submap, Isometry3f &poseDRt);
+                      SubmapObj& submap);
+
+void additiveNoiseToSubmap(GaussianGen& transSampler,
+                           GaussianGen& rotSampler,
+                           SubmapObj& submap_i,
+                           SubmapObj& submap_i_1);
 
 
 #endif // UTILS_G2O_HPP

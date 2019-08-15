@@ -21,8 +21,8 @@ Matrix<double, 6,6> generateGaussianNoise(GaussianGen& transSampler,
     bool randomSeed = false;
     std::vector<double> noiseTranslation;
     std::vector<double> noiseRotation;
-    noiseTranslation.push_back(0.1);
-    noiseTranslation.push_back(0.1);
+    noiseTranslation.push_back(0.01);
+    noiseTranslation.push_back(0.01);
     noiseTranslation.push_back(0.0001);
     noiseRotation.push_back(0.0001);
     noiseRotation.push_back(0.0001);
@@ -56,11 +56,9 @@ Matrix<double, 6,6> generateGaussianNoise(GaussianGen& transSampler,
     return information;
 }
 
-
 void addNoiseToSubmap(GaussianGen& transSampler,
                       GaussianGen& rotSampler,
-                      SubmapObj& submap,
-                      Isometry3f& poseDRt){
+                      SubmapObj& submap){
     // Noise to rotation
     Vector3d quatXYZ = rotSampler.generateSample();
     double qw = 1.0 - quatXYZ.norm();
@@ -77,8 +75,42 @@ void addNoiseToSubmap(GaussianGen& transSampler,
     // Transform point cloud and submap frame
     Isometry3f poseDR(Isometry3f(Translation3f(trans.cast<float>())) *
                       Isometry3f(rot.cast<float>()));
-    poseDRt = poseDRt * poseDR;
 
-    pcl::transformPointCloud(submap.submap_pcl_, submap.submap_pcl_, poseDRt.matrix());
-    submap.submap_tf_ = poseDRt * submap.submap_tf_;
+    pcl::transformPointCloud(submap.submap_pcl_, submap.submap_pcl_, poseDR.matrix());
+    submap.submap_tf_ = poseDR * submap.submap_tf_;
+}
+
+void additiveNoiseToSubmap(GaussianGen& transSampler,
+                           GaussianGen& rotSampler,
+                           SubmapObj& submap_i,
+                           SubmapObj& submap_i_1){
+    // Noise to rotation
+    Vector3d quatXYZ = rotSampler.generateSample();
+    double qw = 1.0 - quatXYZ.norm();
+    if (qw < 0) {
+      qw = 0.;
+      cerr << "x";
+    }
+
+//    float roll = 0, pitch = 0, yaw = 0.01;
+//    Quaternionf q;
+//    q = AngleAxisf(roll, Vector3f::UnitX())
+//        * AngleAxisf(pitch, Vector3f::UnitY())
+//        * AngleAxisf(yaw, Vector3f::UnitZ());
+
+    Quaterniond rot(qw, quatXYZ.x(), quatXYZ.y(), quatXYZ.z());
+    rot.normalize();
+//    Vector3d trans = transSampler.generateSample();
+    Vector3d trans = Vector3d(0,0,0);
+
+    Isometry3f drift(Isometry3f(Translation3f(trans.cast<float>())) *
+                      Isometry3f(rot.normalized().cast<float>()));
+
+    // Transform point cloud and submap frame
+    Isometry3f tf_i1_i = submap_i_1.submap_tf_.inverse() * submap_i.submap_tf_;
+
+    Isometry3f orig_i = submap_i.submap_tf_;
+    submap_i.submap_tf_ = submap_i_1.submap_tf_ * tf_i1_i * drift;
+    pcl::transformPointCloud(submap_i.submap_pcl_, submap_i.submap_pcl_,
+                             (orig_i.inverse() * submap_i.submap_tf_).matrix());
 }

@@ -70,10 +70,11 @@ void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapOb
     pcl::compute3DCentroid(submap_from.submap_pcl_, xyz_centroid);
     pcl::computeCovarianceMatrix(submap_from.submap_pcl_, xyz_centroid, cov_matrix);
 
+    // For testing
     Eigen::VectorXd info_diag(3);
-    info_diag << 10000.0, 10000.0, 1000.0;
+    info_diag << 10000.0, 10000.0, 10000.0;
     Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Zero();
-    information.block<3,3>(0,0) = cov_matrix.normalized().inverse().cast<double>();
+    information.block<3,3>(0,0) = info_diag.asDiagonal()*0.1;
     information.block<3,3>(3,3) = info_diag.asDiagonal();
     e->setInformation(information);
 

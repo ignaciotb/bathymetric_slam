@@ -32,9 +32,9 @@ SubmapRegistration::SubmapRegistration(){
     gicp_.setTransformationEstimation(te);
 
     // GICP parameters
-    gicp_.setMaxCorrespondenceDistance(2);
-    gicp_.setTransformationEpsilon (1e-3);
-    gicp_.setMaximumIterations(100);
+    gicp_.setMaxCorrespondenceDistance(50);
+    gicp_.setTransformationEpsilon (1e-4);
+    gicp_.setMaximumIterations(200);
 }
 
 SubmapRegistration::~SubmapRegistration(){
