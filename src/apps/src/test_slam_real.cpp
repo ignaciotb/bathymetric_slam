@@ -239,7 +239,7 @@ int main(int argc, char** argv){
     benchmark.add_benchmark(reg_map, reg_track, "registered");
 
     // Create initial graph estimate
-    graph_obj->createInitialEstimate();
+//    graph_obj->createInitialEstimate();
 
     // Save graph to output g2o file (optimization can be run with G2O)
     string outFilename = "graph.g2o";
@@ -250,10 +250,10 @@ int main(int argc, char** argv){
     ceres::optimizer::MapOfPoses poses = ceres::optimizer::ceresSolver(outFilename);
 
     // Visualize and update submaps with Ceres output
-//    visualizer->plotPoseGraphCeres(poses, submaps_reg);
-//    while(!viewer.wasStopped ()){
-//        viewer.spinOnce ();
-//    }
+    visualizer->plotPoseGraphCeres(poses, submaps_reg);
+    while(!viewer.wasStopped ()){
+        viewer.spinOnce ();
+    }
 
     // Benchmark Optimized
     PointsT opt_map = pclToMatrixSubmap(submaps_reg);

@@ -90,7 +90,7 @@ void GraphConstructor::findLoopClosures(SubmapObj& submap_i, const SubmapsVec& s
     for(SubmapObj submap_j: submaps_set){
         if(find(submap_i.overlaps_idx_.begin(), submap_i.overlaps_idx_.end(), submap_j.submap_id_)
                 != submap_i.overlaps_idx_.end()){
-            this->createLCEdge(submap_j, submap_i);
+            this->createLCEdge(submap_i, submap_j);
         }
     }
 }
@@ -103,8 +103,8 @@ void GraphConstructor::createInitialEstimate(){
     for (size_t i =0; i < drEdges_.size(); ++i) {
         std::cout << "DR edge " << i << std::endl;
         EdgeSE3* e = drEdges_[i];
-        VertexSE3* from = static_cast<VertexSE3*>(e->vertex(1));
-        VertexSE3* to = static_cast<VertexSE3*>(e->vertex(0));
+        VertexSE3* from = static_cast<VertexSE3*>(e->vertex(0));
+        VertexSE3* to = static_cast<VertexSE3*>(e->vertex(1));
         HyperGraph::VertexSet aux;
         aux.insert(from);
         e->initialEstimate(aux, to);
@@ -116,12 +116,14 @@ void GraphConstructor::saveG2OFile(std::string outFilename){
 
     // Save graph to output file
     ofstream fileOutputStream;
-    if (outFilename == "-") {
-        outFilename = "default_graph.g2o";
+    if (outFilename != "-") {
+      cerr << "Writing into " << outFilename << endl;
+      fileOutputStream.open(outFilename.c_str());
+    } else {
+      cerr << "writing to stdout" << endl;
     }
     std::cout << "Saving graph to file " << outFilename << std::endl;
 
-    fileOutputStream.open(outFilename.c_str());
     ostream& fout = outFilename != "-" ? fileOutputStream : std::cout;
 
     // Concatenate DR and LC edges (DR go first, according to g2o convention)
@@ -143,7 +145,13 @@ void GraphConstructor::saveG2OFile(std::string outFilename){
       VertexSE3* from = static_cast<VertexSE3*>(e->vertex(0));
       VertexSE3* to = static_cast<VertexSE3*>(e->vertex(1));
       fout << edgeTag << " " << from->id() << " " << to->id() << " ";
-      e->write(fout);
+      Vector7 meas=g2o::internal::toVectorQT(e->measurement());
+      for (int i=0; i<7; i++) fout  << meas[i] << " ";
+      for (int i=0; i<e->information().rows(); i++){
+        for (int j=i; j<e->information().cols(); j++) {
+          fout <<  e->information()(i,j) << " ";
+        }
+      }
       fout << endl;
     }
 }

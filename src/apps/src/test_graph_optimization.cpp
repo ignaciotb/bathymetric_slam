@@ -68,10 +68,8 @@ int main(int argc, char** argv){
     // Add additive Gaussian noise to vehicle's pose among submaps
     GaussianGen transSampler, rotSampler;
     Matrix<double, 6,6> information = generateGaussianNoise(transSampler, rotSampler);
-    Isometry3f poseDR(Isometry3f(Translation3f(Vector3f(0,0,0))) *
-                      Isometry3f(Quaternionf(1,0,0,0)));
     for(SubmapObj& submap_i: submaps_gt){
-        addNoiseToSubmap(transSampler, rotSampler, submap_i, poseDR);
+        addNoiseToSubmap(transSampler, rotSampler, submap_i);
     }
 
     // Benchmar Initial
@@ -155,7 +153,7 @@ int main(int argc, char** argv){
         submaps_prev.clear();
     }
     // Create initial graph estimate
-    graph_obj->createInitialEstimate();
+//    graph_obj->createInitialEstimate();
 
     // Plot Pose graph
 #if INTERACTIVE == 1
