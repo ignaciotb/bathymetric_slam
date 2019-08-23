@@ -15,6 +15,29 @@ using namespace Eigen;
 
 SubmapObj::SubmapObj(){
 
+    // Uncertainty on vehicle nav across submaps (assuming here that each has a similar length)
+    std::vector<double> noiseTranslation;
+    std::vector<double> noiseRotation;
+    noiseTranslation.push_back(0.01);
+    noiseTranslation.push_back(0.01);
+    noiseTranslation.push_back(0.001);
+    noiseRotation.push_back(0.001);
+    noiseRotation.push_back(0.001);
+    noiseRotation.push_back(0.01);
+
+    Eigen::Matrix3d transNoise = Eigen::Matrix3d::Zero();
+    for (int i = 0; i < 3; ++i)
+      transNoise(i, i) = std::pow(noiseTranslation[i], 2);
+
+    Eigen::Matrix3d rotNoise = Eigen::Matrix3d::Zero();
+    for (int i = 0; i < 3; ++i)
+      rotNoise(i, i) = std::pow(noiseRotation[i], 2);
+
+    // Information matrix of the distribution
+    Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Zero();
+    information.block<3,3>(0,0) = transNoise.inverse();
+    information.block<3,3>(3,3) = rotNoise.inverse();
+    submap_info_ = information;
 }
 
 SubmapObj::SubmapObj(const unsigned int& submap_id, const unsigned int& swath_id, PointCloudT& submap_pcl):
