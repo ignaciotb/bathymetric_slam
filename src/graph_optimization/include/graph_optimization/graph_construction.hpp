@@ -37,8 +37,9 @@ public:
     vector<VertexSE3*> vertices_;
     vector<EdgeSE3*> drEdges_;
     vector<EdgeSE3*> edges_;
+    std::vector<Eigen::Matrix2d, Eigen::aligned_allocator<Eigen::Matrix2d> > covs_lc_;
 
-    GraphConstructor();
+    GraphConstructor(std::vector<Eigen::Matrix2d, Eigen::aligned_allocator<Eigen::Matrix2d> > covs_lc);
 
     ~GraphConstructor();
 

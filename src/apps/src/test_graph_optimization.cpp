@@ -49,6 +49,7 @@ int main(int argc, char** argv){
     // Read submaps pointclouds from folder
     SubmapsVec submaps_gt, submaps_reg;
     submaps_gt = readSubmapsInDir(submaps_path.string());
+    std::vector<Eigen::Matrix2d, Eigen::aligned_allocator<Eigen::Matrix2d> > covs_lc;
 
     // Visualization
     PCLVisualizer viewer ("Submaps viewer");
@@ -81,7 +82,7 @@ int main(int argc, char** argv){
     SubmapRegistration* gicp_reg = new SubmapRegistration();
 
     // Graph constructor
-    GraphConstructor* graph_obj = new GraphConstructor();
+    GraphConstructor* graph_obj = new GraphConstructor(covs_lc);
 
     SubmapObj submap_trg;
     SubmapsVec submaps_prev;

@@ -15,8 +15,8 @@ using namespace Eigen;
 using namespace std;
 using namespace g2o;
 
-GraphConstructor::GraphConstructor(){
-
+GraphConstructor::GraphConstructor(std::vector<Eigen::Matrix2d, Eigen::aligned_allocator<Eigen::Matrix2d> > covs_lc):
+    covs_lc_(covs_lc){
 }
 
 GraphConstructor::~GraphConstructor(){
@@ -70,16 +70,25 @@ void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapOb
     pcl::compute3DCentroid(submap_from.submap_pcl_, xyz_centroid);
     pcl::computeCovarianceMatrix(submap_from.submap_pcl_, xyz_centroid, cov_matrix);
 
-    // For testing
-    Eigen::VectorXd info_diag(3), info_diag_trans(3);
-    double z = cov_matrix.normalized().inverse().cast<double>().row(2)(2);
-    info_diag << 10000.0, 10000.0, 1000.0;
-    info_diag_trans << z, z, 10000.0;
-
     Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Zero();
-    information.block<3,3>(0,0) = info_diag_trans.asDiagonal();
-////    information.block<3,3>(0,0) = cov_matrix.normalized().inverse().cast<double>();
+
+    // Info matrix proportional to variance in Z in the pointcloud
+//    Eigen::VectorXd info_diag(3), info_diag_trans(3);
+//    double z = cov_matrix.normalized().inverse().cast<double>().row(2)(2);
+//    info_diag << 10000.0, 10000.0, 1000.0;
+//    info_diag_trans << z, z, 10000.0;
+//    information.block<3,3>(0,0) = info_diag_trans.asDiagonal();
+//    information.block<3,3>(3,3) = info_diag.asDiagonal();
+
+    // Info matrix from NN training
+    Eigen::Matrix2d cov_reg = this->covs_lc_.at(submap_from.submap_id_);
+    Eigen::VectorXd info_diag(3), info_diag_trans(3);
+    info_diag << 10000.0, 10000.0, 1000.0;
+    information.topLeftCorner(2,2) = cov_reg;
+    information(2,2) = 10000;
     information.block<3,3>(3,3) = info_diag.asDiagonal();
+
+//    std::cout << information << std::endl;
     e->setInformation(information);
 
     // Check resulting COV is positive semi-definite

@@ -38,8 +38,8 @@ Eigen::Matrix<double, 6, 6> SubmapObj::createDRWeights(){
     // Uncertainty on vehicle nav across submaps (assuming here that each has a similar length)
     std::vector<double> noiseTranslation;
     std::vector<double> noiseRotation;
-    noiseTranslation.push_back(5);
-    noiseTranslation.push_back(5);
+    noiseTranslation.push_back(10);
+    noiseTranslation.push_back(10);
     noiseTranslation.push_back(0.001);
     noiseRotation.push_back(0.001);
     noiseRotation.push_back(0.001);

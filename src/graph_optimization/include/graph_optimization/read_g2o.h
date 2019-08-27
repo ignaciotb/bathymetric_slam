@@ -122,9 +122,11 @@ bool ReadG2oFile(const std::string& filename,
       if (!ReadVertex(&infile, poses)) {
         return false;
       }
-    } else if (data_type == Constraint::name()) {
-      ReadConstraint(&infile, constraints);
-    } else {
+    }
+    else if (data_type == Constraint::name()) {
+        ReadConstraint(&infile, constraints);
+    }
+    else {
       LOG(ERROR) << "Unknown data type: " << data_type;
       return false;
     }

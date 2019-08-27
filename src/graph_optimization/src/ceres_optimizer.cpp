@@ -67,18 +67,18 @@ void BuildOptimizationProblem(const VectorOfConstraints& constraints,
         double upp_constraint = 0.5;
         double low_constraint = 0.5;
         problem->SetParameterLowerBound(pose_begin->second.p.data(), 0, pose_begin->second.p[0] - low_constraint);
-        problem->SetParameterUpperBound(pose_begin->second.p.data(), 0, pose_begin->second.p[0] + upp_constraint);
         problem->SetParameterLowerBound(pose_end->second.p.data(), 0, pose_end->second.p[0] - low_constraint );
+        problem->SetParameterUpperBound(pose_begin->second.p.data(), 0, pose_begin->second.p[0] + upp_constraint);
         problem->SetParameterUpperBound(pose_end->second.p.data(), 0, pose_end->second.p[0] + upp_constraint);
 
         problem->SetParameterLowerBound(pose_begin->second.p.data(), 1, pose_begin->second.p[1] - low_constraint);
-        problem->SetParameterUpperBound(pose_begin->second.p.data(), 1, pose_begin->second.p[1] + upp_constraint);
         problem->SetParameterLowerBound(pose_end->second.p.data(), 1, pose_end->second.p[1] - low_constraint);
+        problem->SetParameterUpperBound(pose_begin->second.p.data(), 1, pose_begin->second.p[1] + upp_constraint);
         problem->SetParameterUpperBound(pose_end->second.p.data(), 1, pose_end->second.p[1] + upp_constraint);
 
         problem->SetParameterLowerBound(pose_begin->second.q.data(), 2, pose_begin->second.q[2] - M_PI/1000.0);
-        problem->SetParameterUpperBound(pose_begin->second.q.data(), 2, pose_begin->second.q[2] + M_PI/1000.0);
         problem->SetParameterLowerBound(pose_end->second.q.data(), 2, pose_end->second.q[2] - M_PI/1000.0);
+        problem->SetParameterUpperBound(pose_begin->second.q.data(), 2, pose_begin->second.q[2] + M_PI/1000.0);
         problem->SetParameterUpperBound(pose_end->second.q.data(), 2, pose_end->second.q[2] + M_PI/1000.0);
     }
 
@@ -94,14 +94,14 @@ bool SolveOptimizationProblem(ceres::Problem* problem) {
     CHECK(problem != NULL);
 
     ceres::Solver::Options options;
-    options.max_num_iterations = 200;
+    options.max_num_iterations = 300;
     options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
     //  options.minimizer_type = ceres::LINE_SEARCH;
     options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
     options.use_inner_iterations = false;
     options.minimizer_progress_to_stdout = true;
-    options.num_threads = 3;
-    options.eta = 1e-5;
+    options.num_threads =4;
+    options.eta = 1e-7;
 
     ceres::Solver::Summary summary;
     ceres::Solve(options, problem, &summary);
