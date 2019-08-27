@@ -117,7 +117,7 @@ int main(int argc, char** argv){
 
         // Create DR edge i and store (skip submap 0)
         if(submap_i.submap_id_ != 0 ){
-            submap_i.submap_info_ = information;    // For simulation data only
+//            submap_i.submap_info_ = information;    // For simulation data only
             graph_obj->createDREdge(submap_i);
         }
 

@@ -64,20 +64,22 @@ void BuildOptimizationProblem(const VectorOfConstraints& constraints,
         problem->SetParameterization(pose_end->second.p.data(), z_local_param);
 
         // Set boundaries for x, y and yaw
-        problem->SetParameterLowerBound(pose_begin->second.p.data(), 0, pose_begin->second.p[0] - 10.0);
-        problem->SetParameterUpperBound(pose_begin->second.p.data(), 0, pose_begin->second.p[0] + 10.0);
-        problem->SetParameterLowerBound(pose_end->second.p.data(), 0, pose_end->second.p[0] - 10.0);
-        problem->SetParameterUpperBound(pose_end->second.p.data(), 0, pose_end->second.p[0] + 10.0);
+        double upp_constraint = 0.5;
+        double low_constraint = 0.5;
+        problem->SetParameterLowerBound(pose_begin->second.p.data(), 0, pose_begin->second.p[0] - low_constraint);
+        problem->SetParameterUpperBound(pose_begin->second.p.data(), 0, pose_begin->second.p[0] + upp_constraint);
+        problem->SetParameterLowerBound(pose_end->second.p.data(), 0, pose_end->second.p[0] - low_constraint );
+        problem->SetParameterUpperBound(pose_end->second.p.data(), 0, pose_end->second.p[0] + upp_constraint);
 
-        problem->SetParameterLowerBound(pose_begin->second.p.data(), 1, pose_begin->second.p[1] - 10.0);
-        problem->SetParameterUpperBound(pose_begin->second.p.data(), 1, pose_begin->second.p[1] + 10.0);
-        problem->SetParameterLowerBound(pose_end->second.p.data(), 1, pose_end->second.p[1] - 10.0);
-        problem->SetParameterUpperBound(pose_end->second.p.data(), 1, pose_end->second.p[1] + 10.0);
+        problem->SetParameterLowerBound(pose_begin->second.p.data(), 1, pose_begin->second.p[1] - low_constraint);
+        problem->SetParameterUpperBound(pose_begin->second.p.data(), 1, pose_begin->second.p[1] + upp_constraint);
+        problem->SetParameterLowerBound(pose_end->second.p.data(), 1, pose_end->second.p[1] - low_constraint);
+        problem->SetParameterUpperBound(pose_end->second.p.data(), 1, pose_end->second.p[1] + upp_constraint);
 
-        problem->SetParameterLowerBound(pose_begin->second.q.data(), 2, pose_begin->second.q[2] - M_PI/100.0);
-        problem->SetParameterUpperBound(pose_begin->second.q.data(), 2, pose_begin->second.q[2] + M_PI/100.0);
-        problem->SetParameterLowerBound(pose_end->second.q.data(), 2, pose_end->second.q[2] - M_PI/100.0);
-        problem->SetParameterUpperBound(pose_end->second.q.data(), 2, pose_end->second.q[2] + M_PI/100.0);
+        problem->SetParameterLowerBound(pose_begin->second.q.data(), 2, pose_begin->second.q[2] - M_PI/1000.0);
+        problem->SetParameterUpperBound(pose_begin->second.q.data(), 2, pose_begin->second.q[2] + M_PI/1000.0);
+        problem->SetParameterLowerBound(pose_end->second.q.data(), 2, pose_end->second.q[2] - M_PI/1000.0);
+        problem->SetParameterUpperBound(pose_end->second.q.data(), 2, pose_end->second.q[2] + M_PI/1000.0);
     }
 
     // Constrain the gauge freedom: set first AUV pose as anchor constant

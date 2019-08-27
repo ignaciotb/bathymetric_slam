@@ -15,29 +15,7 @@ using namespace Eigen;
 
 SubmapObj::SubmapObj(){
 
-    // Uncertainty on vehicle nav across submaps (assuming here that each has a similar length)
-    std::vector<double> noiseTranslation;
-    std::vector<double> noiseRotation;
-    noiseTranslation.push_back(0.01);
-    noiseTranslation.push_back(0.01);
-    noiseTranslation.push_back(0.001);
-    noiseRotation.push_back(0.001);
-    noiseRotation.push_back(0.001);
-    noiseRotation.push_back(0.01);
-
-    Eigen::Matrix3d transNoise = Eigen::Matrix3d::Zero();
-    for (int i = 0; i < 3; ++i)
-      transNoise(i, i) = std::pow(noiseTranslation[i], 2);
-
-    Eigen::Matrix3d rotNoise = Eigen::Matrix3d::Zero();
-    for (int i = 0; i < 3; ++i)
-      rotNoise(i, i) = std::pow(noiseRotation[i], 2);
-
-    // Information matrix of the distribution
-    Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Zero();
-    information.block<3,3>(0,0) = transNoise.inverse();
-    information.block<3,3>(3,3) = rotNoise.inverse();
-    submap_info_ = information;
+    submap_info_ = createDRWeights();
 }
 
 SubmapObj::SubmapObj(const unsigned int& submap_id, const unsigned int& swath_id, PointCloudT& submap_pcl):
@@ -52,15 +30,20 @@ SubmapObj::SubmapObj(const unsigned int& submap_id, const unsigned int& swath_id
     submap_pcl_.sensor_orientation_ = Eigen::Quaternionf(0,0,0,0);
     pcl::transformPointCloud(submap_pcl_, submap_pcl_, submap_tf_.matrix());
 
+    submap_info_ = createDRWeights();
+}
+
+Eigen::Matrix<double, 6, 6> SubmapObj::createDRWeights(){
+
     // Uncertainty on vehicle nav across submaps (assuming here that each has a similar length)
     std::vector<double> noiseTranslation;
     std::vector<double> noiseRotation;
-    noiseTranslation.push_back(0.01);
-    noiseTranslation.push_back(0.01);
-    noiseTranslation.push_back(0.0001);
-    noiseRotation.push_back(0.0001);
-    noiseRotation.push_back(0.0001);
+    noiseTranslation.push_back(5);
+    noiseTranslation.push_back(5);
+    noiseTranslation.push_back(0.001);
     noiseRotation.push_back(0.001);
+    noiseRotation.push_back(0.001);
+    noiseRotation.push_back(0.1);
 
     Eigen::Matrix3d transNoise = Eigen::Matrix3d::Zero();
     for (int i = 0; i < 3; ++i)
@@ -74,9 +57,9 @@ SubmapObj::SubmapObj(const unsigned int& submap_id, const unsigned int& swath_id
     Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Zero();
     information.block<3,3>(0,0) = transNoise.inverse();
     information.block<3,3>(3,3) = rotNoise.inverse();
-    submap_info_ = information;
-}
 
+    return information;
+}
 
 void SubmapObj::findOverlaps(std::vector<SubmapObj, Eigen::aligned_allocator<SubmapObj> > &submaps_set){
 
@@ -260,39 +243,47 @@ PointsT trackofSubmap(const SubmapsVec& submaps_set){
     return tracks;
 }
 
-double computeInfoInSubmap(const SubmapObj& submap){
+Eigen::Array3f computeInfoInSubmap(const SubmapObj& submap){
 
     // Beams z centroid
-    float mean_beam = 0.0;
+    Eigen::Array3f mean_beam;
     float beam_cnt = 0.0;
+    mean_beam.setZero();
     for (const PointT& beam: submap.submap_pcl_){
-        mean_beam += beam.z;
-        beam_cnt += 1.0;
+        mean_beam += beam.getArray3fMap();
+        beam_cnt ++;
     }
     mean_beam = mean_beam / beam_cnt;
 
     // Condition number of z
-    float cond_num = 0;
+    Eigen::Array3f cond_num;
+    cond_num.setZero();
     for (const PointT& beam: submap.submap_pcl_){
-        cond_num += std::abs(beam.z - mean_beam);
+        cond_num += (beam.getArray3fMap() - mean_beam).abs();
     }
 
-    return cond_num = cond_num / beam_cnt;
+    return cond_num;
 }
 
 SubmapsVec parseSubmapsAUVlib(std_data::pt_submaps& ss){
 
     SubmapsVec submaps_set;
     int swath_cnt =0;
+    int swath_cnt_prev = 0;
     std::cout << "Number of submaps " << ss.points.size() << std::endl;
     double easting = 0;
     double northing = 0;
 
+    int submap_id = 0;
     for(unsigned int k=0; k<ss.points.size(); k++){
         SubmapObj submap_k;
-        submap_k.submap_id_ = k;
+        submap_k.submap_id_ = submap_id++;
+        swath_cnt_prev = swath_cnt;
+
         if(k>0){
-            swath_cnt = (std::norm(ss.angles.at(k)[2] - ss.angles.at(k-1)[2]) > M_PI/3)? ++swath_cnt: swath_cnt;
+            if(std::norm(ss.angles.at(k)[2] - ss.angles.at(k-1)[2]) > M_PI){
+                ++swath_cnt;
+            }
         }
         submap_k.swath_id_ = swath_cnt;
 
@@ -329,7 +320,17 @@ SubmapsVec parseSubmapsAUVlib(std_data::pt_submaps& ss){
             submap_k.submap_pcl_.points.push_back(PointT(p[0],p[1],p[2]));
         }
 
-        submaps_set.push_back(submap_k);
+        if(checkSubmapSize(submap_k)){
+            submaps_set.push_back(submap_k);
+        }
+        else{
+            submap_id--;
+//            if(swath_cnt != swath_cnt_prev){
+//                swath_cnt--;
+//                swath_cnt_prev--;
+//            }
+        }
+
     }
 
     return submaps_set;

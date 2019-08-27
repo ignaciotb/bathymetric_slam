@@ -54,6 +54,8 @@ public:
 
     void findOverlaps(std::vector<SubmapObj, Eigen::aligned_allocator<SubmapObj>> &submaps_set);
 
+    Eigen::Matrix<double, 6, 6> createDRWeights();
+
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
@@ -69,7 +71,7 @@ PointsT pclToMatrixSubmap(const SubmapsVec& submaps_set);
 
 PointsT trackToMatrixSubmap(const SubmapsVec& submaps_set);
 
-double computeInfoInSubmap(const SubmapObj& submap);
+Array3f computeInfoInSubmap(const SubmapObj& submap);
 
 SubmapsVec parseSubmapsAUVlib(std_data::pt_submaps& ss);
 

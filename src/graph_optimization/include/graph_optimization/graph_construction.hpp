@@ -17,6 +17,7 @@
 #include "g2o/core/factory.h"
 
 #include <eigen3/Eigen/Core>
+#include <eigen3/Eigen/Dense>
 
 #include "submaps_tools/submaps.hpp"
 

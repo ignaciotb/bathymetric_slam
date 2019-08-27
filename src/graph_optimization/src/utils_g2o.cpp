@@ -21,12 +21,12 @@ Matrix<double, 6,6> generateGaussianNoise(GaussianGen& transSampler,
     bool randomSeed = false;
     std::vector<double> noiseTranslation;
     std::vector<double> noiseRotation;
+    noiseTranslation.push_back(0.005);
+    noiseTranslation.push_back(0.005);
     noiseTranslation.push_back(0.01);
-    noiseTranslation.push_back(0.01);
-    noiseTranslation.push_back(0.0001);
-    noiseRotation.push_back(0.0001);
-    noiseRotation.push_back(0.0001);
-    noiseRotation.push_back(0.001);
+    noiseRotation.push_back(0.01);
+    noiseRotation.push_back(0.01);
+    noiseRotation.push_back(0.005);
 
     Eigen::Matrix3d transNoise = Eigen::Matrix3d::Zero();
     for (int i = 0; i < 3; ++i)

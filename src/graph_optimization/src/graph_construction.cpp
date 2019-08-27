@@ -62,7 +62,7 @@ void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapOb
     e->setMeasurement(t);
 
     // Information matrix for LC edges
-    double info = computeInfoInSubmap(submap_from);
+    Eigen::Array3f info = computeInfoInSubmap(submap_from);
 
     // Submap covariance matrix
     Eigen::Matrix3f cov_matrix;
@@ -71,12 +71,23 @@ void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapOb
     pcl::computeCovarianceMatrix(submap_from.submap_pcl_, xyz_centroid, cov_matrix);
 
     // For testing
-    Eigen::VectorXd info_diag(3);
-    info_diag << 10000.0, 10000.0, 10000.0;
+    Eigen::VectorXd info_diag(3), info_diag_trans(3);
+    double z = cov_matrix.normalized().inverse().cast<double>().row(2)(2);
+    info_diag << 10000.0, 10000.0, 1000.0;
+    info_diag_trans << z, z, 10000.0;
+
     Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Zero();
-    information.block<3,3>(0,0) = info_diag.asDiagonal()*0.1;
+    information.block<3,3>(0,0) = info_diag_trans.asDiagonal();
+////    information.block<3,3>(0,0) = cov_matrix.normalized().inverse().cast<double>();
     information.block<3,3>(3,3) = info_diag.asDiagonal();
     e->setInformation(information);
+
+    // Check resulting COV is positive semi-definite
+    Eigen::LLT<Eigen::MatrixXd> lltOfA(information);
+    if(lltOfA.info() == Eigen::NumericalIssue){
+        throw std::runtime_error("Non positive semi-definite CoV");
+        std::exit(0);
+    }
 
     std::cout << "LC edge from " << submap_from.submap_id_ << " to " << submap_to.submap_id_ << std::endl;
     edges_.push_back(e);

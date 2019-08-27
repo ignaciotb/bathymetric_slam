@@ -73,28 +73,23 @@ int main(int argc, char** argv){
         cout << options.help({ "", "Group" }) << endl;
         exit(0);
     }
-    boost::filesystem::path submaps_path(path_str);// / "submaps_full.cereal";
+    boost::filesystem::path submaps_path(path_str);
     std_data::pt_submaps ss = std_data::read_data<std_data::pt_submaps>(submaps_path);
     string loopsFilename = "loop_closures.txt";
 
     // Parse data structures
     SubmapsVec submaps_gt = parseSubmapsAUVlib(ss);
 
-    // Benchmark GT
-    benchmark::track_error_benchmark benchmark("real_data");
-    PointsT gt_map = pclToMatrixSubmap(submaps_gt);
-    PointsT gt_track = trackToMatrixSubmap(submaps_gt);
-    benchmark.add_ground_truth(gt_map, gt_track);
-
     // Parameters for downsampling and filtering of submaps
     PointCloudT::Ptr cloud_ptr (new PointCloudT);
     pcl::UniformSampling<PointT> us_filter;
     us_filter.setInputCloud (cloud_ptr);
-    us_filter.setRadiusSearch(0.2);
+    us_filter.setRadiusSearch(1);
     pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor_filter;
     sor_filter.setMeanK (100);
-    sor_filter.setStddevMulThresh(3);
+    sor_filter.setStddevMulThresh(2);
 
+    // Filter out useless maps manually
     for(SubmapObj& submap_i: submaps_gt){
         std::cout << "Before preprocessing: " << submap_i.submap_pcl_.points.size() << std::endl;
         *cloud_ptr = submap_i.submap_pcl_;
@@ -106,16 +101,21 @@ int main(int argc, char** argv){
         std::cout << "After preprocessing: " << submap_i.submap_pcl_.points.size() << std::endl;
     }
 
+    // Benchmark GT
+    benchmark::track_error_benchmark benchmark("real_data");
+    PointsT gt_map = pclToMatrixSubmap(submaps_gt);
+    PointsT gt_track = trackToMatrixSubmap(submaps_gt);
+    benchmark.add_ground_truth(gt_map, gt_track);
 
     // Visualization
-//    PCLVisualizer viewer ("Submaps viewer");
-//    viewer.loadCameraParameters("Antarctica7");
-//    SubmapsVisualizer* visualizer = new SubmapsVisualizer(viewer);
-//    visualizer->setVisualizer(submaps_gt, 2);
-//    while(!viewer.wasStopped ()){
-//        viewer.spinOnce ();
-//    }
-//    viewer.resetStoppedFlag();
+    PCLVisualizer viewer ("Submaps viewer");
+    viewer.loadCameraParameters("Antarctica7");
+    SubmapsVisualizer* visualizer = new SubmapsVisualizer(viewer);
+    visualizer->setVisualizer(submaps_gt, 2);
+    while(!viewer.wasStopped ()){
+        viewer.spinOnce ();
+    }
+    viewer.resetStoppedFlag();
 //    viewer.saveCameraParameters("Antarctica7");
 
 
@@ -134,8 +134,8 @@ int main(int argc, char** argv){
     benchmark.add_benchmark(corrupt_map, corrupt_track, "corrupted");
 
     // Get GT loop closures from external file
-#endif
     std::vector<std::vector<int> > vecLCs = readGTLoopClosures(loopsFilename, submaps_gt.size());
+#endif
 
     // GICP reg for submaps
     SubmapRegistration* gicp_reg = new SubmapRegistration();
@@ -156,18 +156,18 @@ int main(int argc, char** argv){
 
         // Look for loop closures
 #if NOISE == 0
-//        for(SubmapObj& submap_k: submaps_reg){
-//            // Don't look for overlaps between submaps of the same swath or the prev submap
-//            if(submap_k.swath_id_ != submap_i.swath_id_ ||
-//                    submap_k.submap_id_ != submap_i.submap_id_ - 1){
-//                submaps_prev.push_back(submap_k);
-//            }
-//        }
-//        submap_i.findOverlaps(submaps_prev);
-//        submaps_prev.clear();
+        for(SubmapObj& submap_k: submaps_reg){
+            // Don't look for overlaps between submaps of the same swath or the prev submap
+            if(submap_k.swath_id_ != submap_i.swath_id_ ||
+                    submap_k.submap_id_ != submap_i.submap_id_ - 1){
+                submaps_prev.push_back(submap_k);
+            }
+        }
+        submap_i.findOverlaps(submaps_prev);
+        submaps_prev.clear();
 #else
-#endif
         submap_i.overlaps_idx_ = vecLCs.at(submap_i.submap_id_);
+#endif
 
         // Add submap_i to registered set (just for visualization here)
         submaps_reg.push_back(submap_i);
@@ -191,12 +191,12 @@ int main(int argc, char** argv){
         // If potential loop closure detected
         SubmapObj submap_final = submap_i;
         if(!submap_i.overlaps_idx_.empty()){
-            std::cout << "Overlaps of submap " << submap_i.submap_id_ << std::endl;
+//            std::cout << "Overlaps of submap " << submap_i.submap_id_ << std::endl;
             if(fileOutputStream.is_open()){
                 fileOutputStream << submap_i.submap_id_;
                 for(unsigned int j=0; j<submap_i.overlaps_idx_.size(); j++){
                     fileOutputStream << " " << submap_i.overlaps_idx_.at(j);
-                    std::cout << submap_i.overlaps_idx_.at(j) << std::endl;
+//                    std::cout << submap_i.overlaps_idx_.at(j) << std::endl;
                 }
                 fileOutputStream << "\n";
             }
@@ -226,23 +226,23 @@ int main(int argc, char** argv){
     fileOutputStream.close();
 
     // Plot Pose graph
-//    visualizer->updateVisualizer(submaps_reg);
-//    visualizer->plotPoseGraphG2O(*graph_obj);
-//    while(!viewer.wasStopped ()){
-//        viewer.spinOnce ();
-//    }
-//    viewer.resetStoppedFlag();
+//#if INTERACTIVE == 1
+    visualizer->updateVisualizer(submaps_reg);
+    visualizer->plotPoseGraphG2O(*graph_obj);
+    while(!viewer.wasStopped ()){
+        viewer.spinOnce ();
+    }
+    viewer.resetStoppedFlag();
+//#endif
 
     // Benchmark Registered
     PointsT reg_map = pclToMatrixSubmap(submaps_reg);
     PointsT reg_track = trackToMatrixSubmap(submaps_reg);
     benchmark.add_benchmark(reg_map, reg_track, "registered");
 
-    // Create initial graph estimate
-//    graph_obj->createInitialEstimate();
-
     // Save graph to output g2o file (optimization can be run with G2O)
     string outFilename = "graph.g2o";
+//    string outFilename = "/home/torroba/workspace/g2o/bin/g2o.g2o";
     graph_obj->saveG2OFile(outFilename);
 
     // Optimize graph
@@ -263,7 +263,7 @@ int main(int argc, char** argv){
 
     delete(gicp_reg);
     delete(graph_obj);
-//    delete(visualizer);
+    delete(visualizer);
 
     return 0;
 }
