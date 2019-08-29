@@ -72,7 +72,7 @@ std::pair<Eigen::Matrix2d, Eigen::Matrix2d> readCovMatrix(const std::string& fil
         exit(0);
     }
 
-    std::cout << file_name << std::endl;
+//    std::cout << file_name << std::endl;
     int i = 0;
     while (std::getline(input, line)){
         std::istringstream iss(line);
@@ -82,9 +82,9 @@ std::pair<Eigen::Matrix2d, Eigen::Matrix2d> readCovMatrix(const std::string& fil
         else{posterior.row(i-2) = Eigen::Vector2d(a, b).transpose();}
         i++;
     }
-    std::cout << prior << std::endl;
-    std::cout << std::endl;
-    std::cout << posterior << std::endl;
+//    std::cout << prior << std::endl;
+//    std::cout << std::endl;
+//    std::cout << posterior << std::endl;
 
     return std::make_pair(prior, posterior);
 }
@@ -116,19 +116,21 @@ int main(int argc, char** argv){
 
     // Read covs generated from NN
     std::vector<Eigen::Matrix2d, Eigen::aligned_allocator<Eigen::Matrix2d> > covs_lc;
-    for (auto& entry : boost::make_iterator_range(boost::filesystem::directory_iterator(folder), {})) {
-        std::cout << entry << "\n";
-        if (boost::filesystem::is_directory(entry.path())) {
-            continue;
-        }
+    if(!folder_str.empty()){
+        for (auto& entry : boost::make_iterator_range(boost::filesystem::directory_iterator(folder), {})) {
+            std::cout << entry << "\n";
+            if (boost::filesystem::is_directory(entry.path())) {
+                continue;
+            }
 
-        if (boost::filesystem::extension(entry.path()) != ".txt") {
-            continue;
-        }
+            if (boost::filesystem::extension(entry.path()) != ".txt") {
+                continue;
+            }
 
-        Eigen::Matrix2d prior, posterior;
-        std::tie(prior, posterior) = readCovMatrix(entry.path().string());
-        covs_lc.push_back(posterior);
+            Eigen::Matrix2d prior, posterior;
+            std::tie(prior, posterior) = readCovMatrix(entry.path().string());
+            covs_lc.push_back(posterior);
+        }
     }
 
     // Parameters for downsampling and filtering of submaps
@@ -209,10 +211,10 @@ int main(int argc, char** argv){
 #if NOISE == 0
         for(SubmapObj& submap_k: submaps_reg){
             // Don't look for overlaps between submaps of the same swath or the prev submap
-//            if(submap_k.swath_id_ != submap_i.swath_id_ ||
-//                    submap_k.submap_id_ != submap_i.submap_id_ - 1){
+            if(/*submap_k.swath_id_ != submap_i.swath_id_ ||*/
+                    submap_k.submap_id_ != submap_i.submap_id_ - 1){
                 submaps_prev.push_back(submap_k);
-//            }
+            }
         }
         submap_i.findOverlaps(submaps_prev);
         submaps_prev.clear();
@@ -298,7 +300,7 @@ int main(int argc, char** argv){
 
     // Optimize graph
     google::InitGoogleLogging(argv[0]);
-    ceres::optimizer::MapOfPoses poses = ceres::optimizer::ceresSolver(outFilename);
+    ceres::optimizer::MapOfPoses poses = ceres::optimizer::ceresSolver(outFilename, graph_obj->drEdges_.size());
 
     // Visualize and update submaps with Ceres output
     visualizer->plotPoseGraphCeres(poses, submaps_reg);

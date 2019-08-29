@@ -171,7 +171,7 @@ int main(int argc, char** argv){
 
     // Optimize graph
     google::InitGoogleLogging(argv[0]);
-    ceres::optimizer::MapOfPoses poses = ceres::optimizer::ceresSolver(outFilename);
+    ceres::optimizer::MapOfPoses poses = ceres::optimizer::ceresSolver(outFilename, graph_obj->drEdges_.size());
 
     // Visualize
     visualizer->plotPoseGraphCeres(poses, submaps_reg);

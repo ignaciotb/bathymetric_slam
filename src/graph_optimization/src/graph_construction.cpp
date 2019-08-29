@@ -73,20 +73,23 @@ void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapOb
     Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Zero();
 
     // Info matrix proportional to variance in Z in the pointcloud
-//    Eigen::VectorXd info_diag(3), info_diag_trans(3);
-//    double z = cov_matrix.normalized().inverse().cast<double>().row(2)(2);
-//    info_diag << 10000.0, 10000.0, 1000.0;
-//    info_diag_trans << z, z, 10000.0;
-//    information.block<3,3>(0,0) = info_diag_trans.asDiagonal();
-//    information.block<3,3>(3,3) = info_diag.asDiagonal();
-
-    // Info matrix from NN training
-    Eigen::Matrix2d cov_reg = this->covs_lc_.at(submap_from.submap_id_);
-    Eigen::VectorXd info_diag(3), info_diag_trans(3);
-    info_diag << 10000.0, 10000.0, 1000.0;
-    information.topLeftCorner(2,2) = cov_reg;
-    information(2,2) = 10000;
-    information.block<3,3>(3,3) = info_diag.asDiagonal();
+    if(covs_lc_.empty()){
+        Eigen::VectorXd info_diag(3), info_diag_trans(3);
+        double z = cov_matrix.normalized().inverse().cast<double>().row(2)(2);
+        info_diag << 10000.0, 10000.0, 1000.0;
+        info_diag_trans << z, z, 10000.0;
+        information.block<3,3>(0,0) = info_diag.asDiagonal()*0.00006;
+        information.block<3,3>(3,3) = info_diag.asDiagonal();
+    }
+    else{
+        // Info matrix from NN training
+        Eigen::Matrix2d cov_reg = this->covs_lc_.at(submap_from.submap_id_);
+        Eigen::VectorXd info_diag(3), info_diag_trans(3);
+        info_diag << 10000.0, 10000.0, 1000.0;
+        information.topLeftCorner(2,2) = cov_reg;
+        information(2,2) = 10000;
+        information.block<3,3>(3,3) = info_diag.asDiagonal();
+    }
 
 //    std::cout << information << std::endl;
     e->setInformation(information);

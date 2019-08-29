@@ -17,7 +17,8 @@ namespace optimizer {
 // Constructs the nonlinear least squares optimization problem from the pose
 // graph constraints.
 void BuildOptimizationProblem(const VectorOfConstraints& constraints,
-                              MapOfPoses* poses, ceres::Problem* problem) {
+                              MapOfPoses* poses, ceres::Problem* problem,
+                              int drConstraints) {
     CHECK(poses != NULL);
     CHECK(problem != NULL);
     if (constraints.empty()) {
@@ -25,12 +26,69 @@ void BuildOptimizationProblem(const VectorOfConstraints& constraints,
         return;
     }
 
+//    LossFunction* loss_function = new ceres::HuberLoss(1);
     LossFunction* loss_function = nullptr;
     SubsetParameterization* z_local_param = new SubsetParameterization(3, std::vector<int>{2});
     SubsetParameterization* roll_pitch_local_param = new SubsetParameterization(3, std::vector<int>{0,1});
 
+    // DR constraints
+    std::cout << "Adding DR " << drConstraints <<  " constraints" << std::endl;
     for (VectorOfConstraints::const_iterator constraints_iter = constraints.begin();
-        constraints_iter != constraints.end(); ++constraints_iter){
+         constraints_iter != constraints.begin() + drConstraints; ++constraints_iter){
+
+        const Constraint3d& constraint = *constraints_iter;
+
+        MapOfPoses::iterator pose_begin = poses->find(constraint.id_begin);
+        CHECK(pose_begin != poses->end())
+            << "Pose with ID: " << constraint.id_begin << " not found.";
+        MapOfPoses::iterator pose_end = poses->find(constraint.id_end);
+        CHECK(pose_end != poses->end())
+            << "Pose with ID: " << constraint.id_end << " not found.";
+
+        // Cost function
+        const Eigen::Matrix<double, 6, 6> sqrt_information =
+            constraint.information.llt().matrixL();
+        ceres::CostFunction* cost_function =
+            PoseGraph3dErrorTerm::Create(constraint.t_be, sqrt_information);
+
+        // Residual block
+        problem->AddResidualBlock(cost_function, loss_function,
+                                  pose_begin->second.p.data(),
+                                  pose_begin->second.q.data(),
+                                  pose_end->second.p.data(),
+                                  pose_end->second.q.data());
+
+        // Constraints in roll and pitch
+        problem->SetParameterization(pose_begin->second.q.data(), roll_pitch_local_param);
+        problem->SetParameterization(pose_end->second.q.data(), roll_pitch_local_param);
+
+        // Constraints in z
+        problem->SetParameterization(pose_begin->second.p.data(), z_local_param);
+        problem->SetParameterization(pose_end->second.p.data(), z_local_param);
+
+        // Set boundaries for x, y and yaw
+        double upp_constraint = 1;
+        double low_constraint = 1;
+        problem->SetParameterLowerBound(pose_begin->second.p.data(), 0, pose_begin->second.p[0] - low_constraint);
+        problem->SetParameterLowerBound(pose_end->second.p.data(), 0, pose_end->second.p[0] - low_constraint );
+        problem->SetParameterUpperBound(pose_begin->second.p.data(), 0, pose_begin->second.p[0] + upp_constraint);
+        problem->SetParameterUpperBound(pose_end->second.p.data(), 0, pose_end->second.p[0] + upp_constraint);
+
+        problem->SetParameterLowerBound(pose_begin->second.p.data(), 1, pose_begin->second.p[1] - low_constraint);
+        problem->SetParameterLowerBound(pose_end->second.p.data(), 1, pose_end->second.p[1] - low_constraint);
+        problem->SetParameterUpperBound(pose_begin->second.p.data(), 1, pose_begin->second.p[1] + upp_constraint);
+        problem->SetParameterUpperBound(pose_end->second.p.data(), 1, pose_end->second.p[1] + upp_constraint);
+
+        problem->SetParameterLowerBound(pose_begin->second.q.data(), 2, pose_begin->second.q[2] - M_PI/100.0);
+        problem->SetParameterLowerBound(pose_end->second.q.data(), 2, pose_end->second.q[2] - M_PI/100.0);
+        problem->SetParameterUpperBound(pose_begin->second.q.data(), 2, pose_begin->second.q[2] + M_PI/100.0);
+        problem->SetParameterUpperBound(pose_end->second.q.data(), 2, pose_end->second.q[2] + M_PI/100.0);
+    }
+
+    // LC constraints
+    std::cout << "Adding LC " << constraints.size() - drConstraints << " constraints" << std::endl;
+    for (VectorOfConstraints::const_iterator constraints_iter = constraints.begin() + drConstraints+1;
+         constraints_iter != constraints.end(); ++constraints_iter){
 
         const Constraint3d& constraint = *constraints_iter;
 
@@ -64,22 +122,22 @@ void BuildOptimizationProblem(const VectorOfConstraints& constraints,
         problem->SetParameterization(pose_end->second.p.data(), z_local_param);
 
         // Set boundaries for x, y and yaw
-        double upp_constraint = 0.5;
-        double low_constraint = 0.5;
-        problem->SetParameterLowerBound(pose_begin->second.p.data(), 0, pose_begin->second.p[0] - low_constraint);
-        problem->SetParameterLowerBound(pose_end->second.p.data(), 0, pose_end->second.p[0] - low_constraint );
-        problem->SetParameterUpperBound(pose_begin->second.p.data(), 0, pose_begin->second.p[0] + upp_constraint);
-        problem->SetParameterUpperBound(pose_end->second.p.data(), 0, pose_end->second.p[0] + upp_constraint);
+        double upp_constraint = 2;
+        double low_constraint = 2;
+//        problem->SetParameterLowerBound(pose_begin->second.p.data(), 0, pose_begin->second.p[0] - low_constraint);
+//        problem->SetParameterLowerBound(pose_end->second.p.data(), 0, pose_end->second.p[0] - low_constraint );
+//        problem->SetParameterUpperBound(pose_begin->second.p.data(), 0, pose_begin->second.p[0] + upp_constraint);
+//        problem->SetParameterUpperBound(pose_end->second.p.data(), 0, pose_end->second.p[0] + upp_constraint);
 
-        problem->SetParameterLowerBound(pose_begin->second.p.data(), 1, pose_begin->second.p[1] - low_constraint);
-        problem->SetParameterLowerBound(pose_end->second.p.data(), 1, pose_end->second.p[1] - low_constraint);
-        problem->SetParameterUpperBound(pose_begin->second.p.data(), 1, pose_begin->second.p[1] + upp_constraint);
-        problem->SetParameterUpperBound(pose_end->second.p.data(), 1, pose_end->second.p[1] + upp_constraint);
+//        problem->SetParameterLowerBound(pose_begin->second.p.data(), 1, pose_begin->second.p[1] - low_constraint);
+//        problem->SetParameterLowerBound(pose_end->second.p.data(), 1, pose_end->second.p[1] - low_constraint);
+//        problem->SetParameterUpperBound(pose_begin->second.p.data(), 1, pose_begin->second.p[1] + upp_constraint);
+//        problem->SetParameterUpperBound(pose_end->second.p.data(), 1, pose_end->second.p[1] + upp_constraint);
 
-        problem->SetParameterLowerBound(pose_begin->second.q.data(), 2, pose_begin->second.q[2] - M_PI/1000.0);
-        problem->SetParameterLowerBound(pose_end->second.q.data(), 2, pose_end->second.q[2] - M_PI/1000.0);
-        problem->SetParameterUpperBound(pose_begin->second.q.data(), 2, pose_begin->second.q[2] + M_PI/1000.0);
-        problem->SetParameterUpperBound(pose_end->second.q.data(), 2, pose_end->second.q[2] + M_PI/1000.0);
+        problem->SetParameterLowerBound(pose_begin->second.q.data(), 2, pose_begin->second.q[2] - M_PI/100.0);
+        problem->SetParameterLowerBound(pose_end->second.q.data(), 2, pose_end->second.q[2] - M_PI/100.0);
+        problem->SetParameterUpperBound(pose_begin->second.q.data(), 2, pose_begin->second.q[2] + M_PI/100.0);
+        problem->SetParameterUpperBound(pose_end->second.q.data(), 2, pose_end->second.q[2] + M_PI/100.0);
     }
 
     // Constrain the gauge freedom: set first AUV pose as anchor constant
@@ -96,6 +154,11 @@ bool SolveOptimizationProblem(ceres::Problem* problem) {
     ceres::Solver::Options options;
     options.max_num_iterations = 300;
     options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+//    options.linear_solver_type = ceres::DENSE_NORMAL_CHOLESKY;
+//    options.linear_solver_type = ceres::SPARSE_SCHUR;
+//    options.linear_solver_type = ceres::SPARSE_QR;
+    //options.linear_solver_type = ceres::DENSE_QR;
+
     //  options.minimizer_type = ceres::LINE_SEARCH;
     options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
     options.use_inner_iterations = false;
@@ -134,7 +197,7 @@ bool OutputPoses(const std::string& filename, const MapOfPoses& poses) {
     return true;
 }
 
-MapOfPoses ceresSolver(const std::string& outFilename){
+MapOfPoses ceresSolver(const std::string& outFilename, const int drConstraints){
     // Ceres solver
     ceres::optimizer::MapOfPoses poses;
     ceres::optimizer::VectorOfConstraints constraints;
@@ -150,7 +213,7 @@ MapOfPoses ceresSolver(const std::string& outFilename){
     std::cout << "Original poses output" << std::endl;
 
     ceres::Problem problem;
-    ceres::optimizer::BuildOptimizationProblem(constraints, &poses, &problem);
+    ceres::optimizer::BuildOptimizationProblem(constraints, &poses, &problem, drConstraints);
 
     std::cout << "Ceres problem built" << std::endl;
 
