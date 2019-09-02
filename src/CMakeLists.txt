@@ -19,6 +19,7 @@ endif()
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -O3 -fPIC")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set( CMAKE_BUILD_TYPE "Release" )
 
 # Must use GNUInstallDirs to install libraries into correct
 # locations on all platforms.

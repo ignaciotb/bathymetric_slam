@@ -47,6 +47,7 @@ void GraphConstructor::createDREdge(const SubmapObj& submap){
 
     std::cout << "DR edge from " << submap.submap_id_ -1 << " to " << submap.submap_id_<< std::endl;
     drEdges_.push_back(e);
+    drMeas_.push_back(t);
 }
 
 
@@ -103,6 +104,7 @@ void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapOb
 
     std::cout << "LC edge from " << submap_from.submap_id_ << " to " << submap_to.submap_id_ << std::endl;
     edges_.push_back(e);
+    lcMeas_.push_back(t);
 }
 
 
@@ -145,12 +147,11 @@ void GraphConstructor::saveG2OFile(std::string outFilename){
     } else {
       cerr << "writing to stdout" << endl;
     }
-    std::cout << "Saving graph to file " << outFilename << std::endl;
-
     ostream& fout = outFilename != "-" ? fileOutputStream : std::cout;
 
     // Concatenate DR and LC edges (DR go first, according to g2o convention)
     edges_.insert(edges_.begin(), drEdges_.begin(), drEdges_.end());
+    lcMeas_.insert(lcMeas_.begin(), drMeas_.begin(), drMeas_.end());
 
     string vertexTag = Factory::instance()->tag(vertices_[0]);
     string edgeTag = Factory::instance()->tag(edges_[0]);
@@ -168,7 +169,8 @@ void GraphConstructor::saveG2OFile(std::string outFilename){
       VertexSE3* from = static_cast<VertexSE3*>(e->vertex(0));
       VertexSE3* to = static_cast<VertexSE3*>(e->vertex(1));
       fout << edgeTag << " " << from->id() << " " << to->id() << " ";
-      Vector7 meas=g2o::internal::toVectorQT(e->measurement());
+//      Vector7 meas=g2o::internal::toVectorQT(e->measurement());
+      Vector7 meas=g2o::internal::toVectorQT(lcMeas_.at(i));
       for (int i=0; i<7; i++) fout  << meas[i] << " ";
       for (int i=0; i<e->information().rows(); i++){
         for (int j=i; j<e->information().cols(); j++) {

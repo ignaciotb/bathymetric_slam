@@ -38,6 +38,8 @@ public:
     vector<EdgeSE3*> drEdges_;
     vector<EdgeSE3*> edges_;
     std::vector<Eigen::Matrix2d, Eigen::aligned_allocator<Eigen::Matrix2d> > covs_lc_;
+    std::vector<Eigen::Isometry3d, Eigen::aligned_allocator<Eigen::Isometry3d> > drMeas_;
+    std::vector<Eigen::Isometry3d, Eigen::aligned_allocator<Eigen::Isometry3d> > lcMeas_;
 
     GraphConstructor(std::vector<Eigen::Matrix2d, Eigen::aligned_allocator<Eigen::Matrix2d> > covs_lc);
 

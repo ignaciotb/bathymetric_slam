@@ -88,60 +88,62 @@ void BuildOptimizationProblem(const VectorOfConstraints& constraints,
     }
 
     // LC constraints
-    std::cout << "Adding LC " << constraints.size() - drConstraints << " constraints" << std::endl;
-    for (VectorOfConstraints::const_iterator constraints_iter = constraints.begin() + drConstraints+1;
-         constraints_iter != constraints.end(); ++constraints_iter){
+    if(constraints.size() - drConstraints != 0){
+        std::cout << "Adding LC " << constraints.size() - drConstraints << " constraints" << std::endl;
+        for (VectorOfConstraints::const_iterator constraints_iter = constraints.begin() + drConstraints+1;
+             constraints_iter != constraints.end(); ++constraints_iter){
 
-        const Constraint3d& constraint = *constraints_iter;
+            const Constraint3d& constraint = *constraints_iter;
 
-        MapOfPoses::iterator pose_begin = poses->find(constraint.id_begin);
-        CHECK(pose_begin != poses->end())
-            << "Pose with ID: " << constraint.id_begin << " not found.";
-        MapOfPoses::iterator pose_end = poses->find(constraint.id_end);
-        CHECK(pose_end != poses->end())
-            << "Pose with ID: " << constraint.id_end << " not found.";
+            MapOfPoses::iterator pose_begin = poses->find(constraint.id_begin);
+            CHECK(pose_begin != poses->end())
+                << "Pose with ID: " << constraint.id_begin << " not found.";
+            MapOfPoses::iterator pose_end = poses->find(constraint.id_end);
+            CHECK(pose_end != poses->end())
+                << "Pose with ID: " << constraint.id_end << " not found.";
 
-        const Eigen::Matrix<double, 6, 6> sqrt_information =
-            constraint.information.llt().matrixL();
+            const Eigen::Matrix<double, 6, 6> sqrt_information =
+                constraint.information.llt().matrixL();
 
-        // Cost function
-        ceres::CostFunction* cost_function =
-            PoseGraph3dErrorTerm::Create(constraint.t_be, sqrt_information);
+            // Cost function
+            ceres::CostFunction* cost_function =
+                PoseGraph3dErrorTerm::Create(constraint.t_be, sqrt_information);
 
-        // Residual block
-        problem->AddResidualBlock(cost_function, loss_function,
-                                  pose_begin->second.p.data(),
-                                  pose_begin->second.q.data(),
-                                  pose_end->second.p.data(),
-                                  pose_end->second.q.data());
+            // Residual block
+            problem->AddResidualBlock(cost_function, loss_function,
+                                      pose_begin->second.p.data(),
+                                      pose_begin->second.q.data(),
+                                      pose_end->second.p.data(),
+                                      pose_end->second.q.data());
 
-        // Constraints in roll and pitch
-        problem->SetParameterization(pose_begin->second.q.data(), roll_pitch_local_param);
-        problem->SetParameterization(pose_end->second.q.data(), roll_pitch_local_param);
+            // Constraints in roll and pitch
+            problem->SetParameterization(pose_begin->second.q.data(), roll_pitch_local_param);
+            problem->SetParameterization(pose_end->second.q.data(), roll_pitch_local_param);
 
-        // Constraints in z
-        problem->SetParameterization(pose_begin->second.p.data(), z_local_param);
-        problem->SetParameterization(pose_end->second.p.data(), z_local_param);
+            // Constraints in z
+            problem->SetParameterization(pose_begin->second.p.data(), z_local_param);
+            problem->SetParameterization(pose_end->second.p.data(), z_local_param);
 
-        // Set boundaries for x, y and yaw
-        double upp_constraint = 10;
-        double low_constraint = 10;
-        double yaw_upp_const = M_PI/100.0;
-        double yaw_low_const = M_PI/100.0;
-//        problem->SetParameterLowerBound(pose_begin->second.p.data(), 0, pose_begin->second.p[0] - low_constraint);
-//        problem->SetParameterLowerBound(pose_end->second.p.data(), 0, pose_end->second.p[0] - low_constraint );
-//        problem->SetParameterUpperBound(pose_begin->second.p.data(), 0, pose_begin->second.p[0] + upp_constraint);
-//        problem->SetParameterUpperBound(pose_end->second.p.data(), 0, pose_end->second.p[0] + upp_constraint);
+            // Set boundaries for x, y and yaw
+            double upp_constraint = 10;
+            double low_constraint = 10;
+            double yaw_upp_const = M_PI/100.0;
+            double yaw_low_const = M_PI/100.0;
+    //        problem->SetParameterLowerBound(pose_begin->second.p.data(), 0, pose_begin->second.p[0] - low_constraint);
+    //        problem->SetParameterLowerBound(pose_end->second.p.data(), 0, pose_end->second.p[0] - low_constraint );
+    //        problem->SetParameterUpperBound(pose_begin->second.p.data(), 0, pose_begin->second.p[0] + upp_constraint);
+    //        problem->SetParameterUpperBound(pose_end->second.p.data(), 0, pose_end->second.p[0] + upp_constraint);
 
-//        problem->SetParameterLowerBound(pose_begin->second.p.data(), 1, pose_begin->second.p[1] - low_constraint);
-//        problem->SetParameterLowerBound(pose_end->second.p.data(), 1, pose_end->second.p[1] - low_constraint);
-//        problem->SetParameterUpperBound(pose_begin->second.p.data(), 1, pose_begin->second.p[1] + upp_constraint);
-//        problem->SetParameterUpperBound(pose_end->second.p.data(), 1, pose_end->second.p[1] + upp_constraint);
+    //        problem->SetParameterLowerBound(pose_begin->second.p.data(), 1, pose_begin->second.p[1] - low_constraint);
+    //        problem->SetParameterLowerBound(pose_end->second.p.data(), 1, pose_end->second.p[1] - low_constraint);
+    //        problem->SetParameterUpperBound(pose_begin->second.p.data(), 1, pose_begin->second.p[1] + upp_constraint);
+    //        problem->SetParameterUpperBound(pose_end->second.p.data(), 1, pose_end->second.p[1] + upp_constraint);
 
-        problem->SetParameterLowerBound(pose_begin->second.q.data(), 2, pose_begin->second.q[2] - yaw_low_const);
-        problem->SetParameterLowerBound(pose_end->second.q.data(), 2, pose_end->second.q[2] - yaw_low_const);
-        problem->SetParameterUpperBound(pose_begin->second.q.data(), 2, pose_begin->second.q[2] + yaw_upp_const);
-        problem->SetParameterUpperBound(pose_end->second.q.data(), 2, pose_end->second.q[2] + yaw_upp_const);
+            problem->SetParameterLowerBound(pose_begin->second.q.data(), 2, pose_begin->second.q[2] - yaw_low_const);
+            problem->SetParameterLowerBound(pose_end->second.q.data(), 2, pose_end->second.q[2] - yaw_low_const);
+            problem->SetParameterUpperBound(pose_begin->second.q.data(), 2, pose_begin->second.q[2] + yaw_upp_const);
+            problem->SetParameterUpperBound(pose_end->second.q.data(), 2, pose_end->second.q[2] + yaw_upp_const);
+        }
     }
 
     // Constrain the gauge freedom: set first AUV pose as anchor constant

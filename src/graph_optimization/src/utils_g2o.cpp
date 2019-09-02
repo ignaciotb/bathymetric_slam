@@ -109,3 +109,63 @@ void additiveNoiseToSubmap(GaussianGen& transSampler,
     submap_i.submap_tf_.translation() = p_i;
     submap_i.submap_tf_.linear() = (submap_i.submap_tf_.linear().matrix() * m).matrix();
 }
+
+
+void addNoiseToGraph(GraphConstructor& graph_obj){
+
+    GaussianGen transSampler, rotSampler;
+    Matrix<double, 6,6> information = generateGaussianNoise(transSampler, rotSampler);
+
+    // noise for all the edges
+    for (size_t i = 0; i < graph_obj.edges_.size(); ++i) {
+      EdgeSE3* e = graph_obj.edges_[i];
+      Eigen::Quaterniond gtQuat = (Eigen::Quaterniond)e->measurement().linear();
+      Eigen::Vector3d gtTrans = e->measurement().translation();
+
+      Eigen::Vector3d quatXYZ = rotSampler.generateSample();
+      double qw = 1.0 - quatXYZ.norm();
+      if (qw < 0) {
+        qw = 0.;
+        cerr << "x";
+      }
+      Eigen::Quaterniond rot(qw, quatXYZ.x(), quatXYZ.y(), quatXYZ.z());
+      rot.normalize();
+      Eigen::Vector3d trans = transSampler.generateSample();
+      rot = gtQuat * rot;
+      trans = gtTrans + trans;
+
+      Eigen::Isometry3d noisyMeasurement = (Eigen::Isometry3d) rot;
+      noisyMeasurement.translation() = trans;
+      e->setMeasurement(noisyMeasurement);
+    }
+
+    // noise for all the edges
+    for (size_t i = 0; i < graph_obj.drEdges_.size(); ++i) {
+      EdgeSE3* e = graph_obj.drEdges_[i];
+      Eigen::Quaterniond gtQuat = (Eigen::Quaterniond)e->measurement().linear();
+      Eigen::Vector3d gtTrans = e->measurement().translation();
+
+      Eigen::Vector3d quatXYZ = rotSampler.generateSample();
+      double qw = 1.0 - quatXYZ.norm();
+      if (qw < 0) {
+        qw = 0.;
+        cerr << "x";
+      }
+      Eigen::Quaterniond rot(1, 0,0,0);
+      rot.normalize();
+      Eigen::Vector3d trans = {0,0,0};//transSampler.generateSample();
+      rot = gtQuat * rot;
+      trans = gtTrans + trans;
+
+      std::cout << "DR " << i << " " << gtTrans.transpose() << std::endl;
+      std::cout << gtQuat.coeffs() << std::endl;
+
+//      std::cout << "Noisy " << trans.transpose() << std::endl;
+//      std::cout << rot.coeffs() << std::endl;
+
+      Eigen::Isometry3d noisyMeasurement = (Eigen::Isometry3d) rot;
+      noisyMeasurement.translation() = trans;
+      e->setMeasurement(noisyMeasurement);
+    }
+}
+
