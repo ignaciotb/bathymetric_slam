@@ -160,9 +160,6 @@ void addNoiseToGraph(GraphConstructor& graph_obj){
       std::cout << "DR " << i << " " << gtTrans.transpose() << std::endl;
       std::cout << gtQuat.coeffs() << std::endl;
 
-//      std::cout << "Noisy " << trans.transpose() << std::endl;
-//      std::cout << rot.coeffs() << std::endl;
-
       Eigen::Isometry3d noisyMeasurement = (Eigen::Isometry3d) rot;
       noisyMeasurement.translation() = trans;
       e->setMeasurement(noisyMeasurement);

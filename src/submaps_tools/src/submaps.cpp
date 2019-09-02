@@ -38,8 +38,8 @@ Eigen::Matrix<double, 6, 6> SubmapObj::createDRWeights(){
     // Uncertainty on vehicle nav across submaps (assuming here that each has a similar length)
     std::vector<double> noiseTranslation;
     std::vector<double> noiseRotation;
-    noiseTranslation.push_back(10);
-    noiseTranslation.push_back(10);
+    noiseTranslation.push_back(3);
+    noiseTranslation.push_back(3);
     noiseTranslation.push_back(0.001);
     noiseRotation.push_back(0.001);
     noiseRotation.push_back(0.001);
@@ -93,7 +93,7 @@ std::pair<int, corners> getSubmapCorners(const SubmapObj& submap){
     // Extract corners
     Eigen::MatrixXf points = submap_pcl_aux.getMatrixXfMap(3,4,0).transpose();
     double min_x, min_y, max_x, max_y;
-    double overlap_coverage = 0.7; // Reduce submap area to look for overlap by this factor
+    double overlap_coverage = 0.6; // Reduce submap area to look for overlap by this factor
     min_x = points.col(0).minCoeff() * overlap_coverage;   // min x
     min_y = points.col(1).minCoeff() * overlap_coverage;   // min y
     max_x = points.col(0).maxCoeff() * overlap_coverage;   // max x

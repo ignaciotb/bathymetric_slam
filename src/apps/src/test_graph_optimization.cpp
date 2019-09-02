@@ -51,15 +51,6 @@ int main(int argc, char** argv){
     submaps_gt = readSubmapsInDir(submaps_path.string());
     std::vector<Eigen::Matrix2d, Eigen::aligned_allocator<Eigen::Matrix2d> > covs_lc;
 
-    // Visualization
-    PCLVisualizer viewer ("Submaps viewer");
-    SubmapsVisualizer* visualizer = new SubmapsVisualizer(viewer);
-    visualizer->setVisualizer(submaps_gt, 2);
-    while(!viewer.wasStopped ()){
-        viewer.spinOnce ();
-    }
-    viewer.resetStoppedFlag();
-
     // Benchmark GT
     benchmark::track_error_benchmark benchmark("real_data");
     PointsT gt_map = pclToMatrixSubmap(submaps_gt);
@@ -69,14 +60,27 @@ int main(int argc, char** argv){
     // Add additive Gaussian noise to vehicle's pose among submaps
     GaussianGen transSampler, rotSampler;
     Matrix<double, 6,6> information = generateGaussianNoise(transSampler, rotSampler);
+    int i = 0;
     for(SubmapObj& submap_i: submaps_gt){
-        addNoiseToSubmap(transSampler, rotSampler, submap_i);
+        if(submap_i.submap_id_==0){continue;}
+        additiveNoiseToSubmap(transSampler, rotSampler, submap_i, submaps_gt.at(i));
+        i++;
     }
 
     // Benchmar Initial
     PointsT init_map = pclToMatrixSubmap(submaps_gt);
     PointsT init_track = trackToMatrixSubmap(submaps_gt);
     benchmark.add_benchmark(init_map, init_track, "noisy");
+
+    // Visualization
+    PCLVisualizer viewer ("Submaps viewer");
+    SubmapsVisualizer* visualizer = new SubmapsVisualizer(viewer);
+    visualizer->setVisualizer(submaps_gt, 2);
+    while(!viewer.wasStopped ()){
+        viewer.spinOnce ();
+    }
+    viewer.resetStoppedFlag();
+
 
     // GICP reg for submaps
     SubmapRegistration* gicp_reg = new SubmapRegistration();
@@ -152,8 +156,6 @@ int main(int argc, char** argv){
         submap_trg.submap_pcl_.clear();
         submaps_prev.clear();
     }
-    // Create initial graph estimate
-//    graph_obj->createInitialEstimate();
 
     // Plot Pose graph
 #if INTERACTIVE == 1

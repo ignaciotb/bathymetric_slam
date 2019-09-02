@@ -32,8 +32,8 @@ SubmapRegistration::SubmapRegistration(){
     gicp_.setTransformationEstimation(te);
 
     // GICP parameters
-    gicp_.setMaxCorrespondenceDistance(50);
-    gicp_.setTransformationEpsilon (1e-5);
+    gicp_.setMaxCorrespondenceDistance(10);
+    gicp_.setTransformationEpsilon (1e-4);
 //    gicp_.setEuclideanFitnessEpsilon(1e-5);
     gicp_.setMaximumIterations(200);
 }
