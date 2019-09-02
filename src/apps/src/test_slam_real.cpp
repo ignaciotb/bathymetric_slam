@@ -118,7 +118,7 @@ int main(int argc, char** argv){
     std::vector<Eigen::Matrix2d, Eigen::aligned_allocator<Eigen::Matrix2d> > covs_lc;
     if(!folder_str.empty()){
         for (auto& entry : boost::make_iterator_range(boost::filesystem::directory_iterator(folder), {})) {
-            std::cout << entry << "\n";
+//            std::cout << entry << "\n";
             if (boost::filesystem::is_directory(entry.path())) {
                 continue;
             }
@@ -160,6 +160,21 @@ int main(int argc, char** argv){
     PointsT gt_track = trackToMatrixSubmap(submaps_gt);
     benchmark.add_ground_truth(gt_map, gt_track);
 
+    // Add Gaussian noise to vehicle's pose among submaps
+    GaussianGen transSampler, rotSampler;
+    Matrix<double, 6,6> information = generateGaussianNoise(transSampler, rotSampler);
+    unsigned int i = 0;
+    for(SubmapObj& submap_i: submaps_gt){
+        if(submap_i.submap_id_ == 0){continue;}
+        i++;
+        additiveNoiseToSubmap(transSampler, rotSampler, submap_i, submaps_gt.at(i-1));
+    }
+
+    // Benchmark noisy
+    PointsT corrupt_map = pclToMatrixSubmap(submaps_gt);
+    PointsT corrupt_track = trackToMatrixSubmap(submaps_gt);
+    benchmark.add_benchmark(corrupt_map, corrupt_track, "corrupted");
+
     // Visualization
     PCLVisualizer viewer ("Submaps viewer");
     viewer.loadCameraParameters("Antarctica7");
@@ -172,14 +187,8 @@ int main(int argc, char** argv){
 //    viewer.saveCameraParameters("Antarctica7");
 
 
+
 #if NOISE == 1
-    // Add Gaussian noise to vehicle's pose among submaps
-    GaussianGen transSampler, rotSampler;
-    Matrix<double, 6,6> information = generateGaussianNoise(transSampler, rotSampler);
-    for(SubmapObj& submap_i: submaps_gt){
-        addNoiseToSubmap(transSampler, rotSampler, submap_i);
-//        additiveNoiseToSubmap(transSampler, rotSampler, submaps_gt.at(i), submaps_gt.at(i-1));
-    }
 
     // Benchmark noisy
     PointsT corrupt_map = pclToMatrixSubmap(submaps_gt);

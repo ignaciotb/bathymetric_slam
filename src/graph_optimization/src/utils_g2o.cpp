@@ -84,33 +84,28 @@ void additiveNoiseToSubmap(GaussianGen& transSampler,
                            GaussianGen& rotSampler,
                            SubmapObj& submap_i,
                            SubmapObj& submap_i_1){
-    // Noise to rotation
-    Vector3d quatXYZ = rotSampler.generateSample();
-    double qw = 1.0 - quatXYZ.norm();
-    if (qw < 0) {
-      qw = 0.;
-      cerr << "x";
-    }
 
-//    float roll = 0, pitch = 0, yaw = 0.01;
-//    Quaternionf q;
-//    q = AngleAxisf(roll, Vector3f::UnitX())
-//        * AngleAxisf(pitch, Vector3f::UnitY())
-//        * AngleAxisf(yaw, Vector3f::UnitZ());
+    Vector3f euler_i = submap_i.submap_tf_.linear().eulerAngles(0,1,2);
+    float roll = 0, pitch = 0, yaw = /*euler_i(0) +*/ 0.1;
+    Matrix3f m;
+    m = AngleAxisf(roll, Vector3f::UnitX())
+        * AngleAxisf(pitch, Vector3f::UnitY())
+        * AngleAxisf(yaw, Vector3f::UnitZ());
 
-    Quaterniond rot(qw, quatXYZ.x(), quatXYZ.y(), quatXYZ.z());
-    rot.normalize();
-//    Vector3d trans = transSampler.generateSample();
-    Vector3d trans = Vector3d(0,0,0);
+    Eigen::Vector3f rel_trans = submap_i.submap_tf_.translation() - submap_i_1.submap_tf_.translation();
+    rel_trans.z() = 0;  // Fix Z coordinate
 
-    Isometry3f drift(Isometry3f(Translation3f(trans.cast<float>())) *
-                      Isometry3f(rot.normalized().cast<float>()));
+    Eigen::Vector3f p_i = submap_i_1.submap_tf_.translation() + m * rel_trans;
 
     // Transform point cloud and submap frame
-    Isometry3f tf_i1_i = submap_i_1.submap_tf_.inverse() * submap_i.submap_tf_;
+    Vector3f rel = m * rel_trans - (rel_trans);
 
-    Isometry3f orig_i = submap_i.submap_tf_;
-    submap_i.submap_tf_ = submap_i_1.submap_tf_ * tf_i1_i * drift;
+//    Isometry3f drift(Isometry3f(Translation3f(rel))*
+//                     Isometry3f((m).matrix()));
+
     pcl::transformPointCloud(submap_i.submap_pcl_, submap_i.submap_pcl_,
-                             (orig_i.inverse() * submap_i.submap_tf_).matrix());
+                             (Isometry3f(Translation3f(rel))).matrix());
+
+    submap_i.submap_tf_.translation() = p_i;
+    submap_i.submap_tf_.linear() = (submap_i.submap_tf_.linear().matrix() * m).matrix();
 }

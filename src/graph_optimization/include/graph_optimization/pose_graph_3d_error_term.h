@@ -60,8 +60,7 @@ class PoseGraph3dErrorTerm {
 
     // Compute the residuals.
     Eigen::Map<Eigen::Matrix<T, 6, 1> > residuals(residuals_ptr);
-    residuals.template block<3, 1>(0, 0) =
-        p_ab_estimated - t_ab_measured_.p.template cast<T>();
+    residuals.template block<3, 1>(0, 0) = p_ab_estimated - t_ab_measured_.p.template cast<T>();
     residuals.template block<3, 1>(3, 0) = T(2.0) * delta_q.vec();
 
     // Scale the residuals by the measurement uncertainty.
