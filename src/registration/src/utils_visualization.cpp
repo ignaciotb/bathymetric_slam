@@ -144,7 +144,7 @@ void SubmapsVisualizer::plotPoseGraphG2O(const GraphConstructor& graph, const Su
     viewer_.spinOnce();
 }
 
-void SubmapsVisualizer::plotPoseGraphCeres(const ceres::optimizer::MapOfPoses& poses, SubmapsVec& submaps_set){
+void SubmapsVisualizer::plotPoseGraphCeres(SubmapsVec& submaps_set){
 
     // Clean initial graph
     viewer_.removeAllPointClouds(vp2_);
@@ -155,21 +155,7 @@ void SubmapsVisualizer::plotPoseGraphCeres(const ceres::optimizer::MapOfPoses& p
     // Update pointclouds
     unsigned int i = 0;
     PointCloudT::Ptr submap_ptr (new PointCloudT);
-    for(SubmapObj& submap: submaps_set){
-        // Final pose of submap_i
-        ceres::optimizer::Pose3d pose_i = poses.at(i);
-        Eigen::Quaterniond q = Eigen::AngleAxisd(pose_i.q.x(), Eigen::Vector3d::UnitX())
-                               * Eigen::AngleAxisd(pose_i.q.y(), Eigen::Vector3d::UnitY())
-                               * Eigen::AngleAxisd(pose_i.q.z(), Eigen::Vector3d::UnitZ());
-
-        Isometry3f final_tf = (Isometry3f) q.cast<float>();
-        final_tf.translation() = pose_i.p.cast<float>();
-
-        // Transform submap_i pcl and tf
-        pcl::transformPointCloud(submap.submap_pcl_, submap.submap_pcl_, (final_tf * submap.submap_tf_.inverse()).matrix());
-        submap.submap_tf_ = final_tf;
-
-        // Plot pcl and tf
+    for(const SubmapObj& submap: submaps_set){
         submap_ptr.reset(new PointCloudT(submap.submap_pcl_));
         PointCloudColorHandlerCustom<PointT> cloud_color(submap_ptr, submap.colors_[0], submap.colors_[1], submap.colors_[2]);
         viewer_.addPointCloud(submap_ptr, cloud_color, "cloud_" + std::to_string(i), vp2_);

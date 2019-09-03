@@ -314,7 +314,8 @@ int main(int argc, char** argv){
     ceres::optimizer::MapOfPoses poses = ceres::optimizer::ceresSolver(outFilename, graph_obj->drEdges_.size());
 
     // Visualize and update submaps with Ceres output
-    visualizer->plotPoseGraphCeres(poses, submaps_reg);
+    ceres::optimizer::updateSubmapsCeres(poses, submaps_reg);
+    visualizer->plotPoseGraphCeres(submaps_reg);
     while(!viewer.wasStopped ()){
         viewer.spinOnce ();
     }

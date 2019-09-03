@@ -54,7 +54,7 @@ public:
 
     void plotPoseGraphG2O(const GraphConstructor& graph, const SubmapsVec &submaps_set);
 
-    void plotPoseGraphCeres(const ceres::optimizer::MapOfPoses& poses, SubmapsVec &submaps_set);
+    void plotPoseGraphCeres(SubmapsVec &submaps_set);
 
     void addCoordinateSystem(const Eigen::Isometry3f& tf);
 

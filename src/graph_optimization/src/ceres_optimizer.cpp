@@ -236,6 +236,28 @@ MapOfPoses ceresSolver(const std::string& outFilename, const int drConstraints){
 return poses;
 }
 
+void updateSubmapsCeres(const ceres::optimizer::MapOfPoses& poses, SubmapsVec& submaps_set){
+
+    // Update pointclouds
+    unsigned int i = 0;
+    for(SubmapObj& submap: submaps_set){
+        // Final pose of submap_i
+        ceres::optimizer::Pose3d pose_i = poses.at(i);
+        Eigen::Quaterniond q = Eigen::AngleAxisd(pose_i.q.x(), Eigen::Vector3d::UnitX())
+                               * Eigen::AngleAxisd(pose_i.q.y(), Eigen::Vector3d::UnitY())
+                               * Eigen::AngleAxisd(pose_i.q.z(), Eigen::Vector3d::UnitZ());
+
+        Isometry3f final_tf = (Isometry3f) q.cast<float>();
+        final_tf.translation() = pose_i.p.cast<float>();
+
+        // Transform submap_i pcl and tf
+        pcl::transformPointCloud(submap.submap_pcl_, submap.submap_pcl_,
+                                 (final_tf * submap.submap_tf_.inverse()).matrix());
+        submap.submap_tf_ = final_tf;
+        i++;
+    }
+}
+
 
 }  // namespace optimizer
 }  // namespace ceres

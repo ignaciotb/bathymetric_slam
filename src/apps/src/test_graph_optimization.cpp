@@ -160,12 +160,13 @@ int main(int argc, char** argv){
     PointsT init_track = trackToMatrixSubmap(submaps_reg);
     benchmark.add_benchmark(init_map, init_track, "initial");
 
-    // Optimize graph
+    // Optimize graph Ceres
     google::InitGoogleLogging(argv[0]);
     ceres::optimizer::MapOfPoses poses = ceres::optimizer::ceresSolver(outFilename, graph_obj->drEdges_.size());
 
-    // Visualize
-    visualizer->plotPoseGraphCeres(poses, submaps_reg);
+    // Update submaps with Ceres solution and visualize
+    ceres::optimizer::updateSubmapsCeres(poses, submaps_reg);
+    visualizer->plotPoseGraphCeres(submaps_reg);
     while(!viewer.wasStopped ()){
         viewer.spinOnce ();
     }

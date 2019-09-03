@@ -57,6 +57,7 @@ target_link_libraries(graph_construction
 
 target_link_libraries(ceres_optimizer
 	ceres 
+        submaps_tools
 	${GFLAGS_LIBRARIES}
 )
 
