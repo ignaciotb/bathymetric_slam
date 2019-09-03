@@ -97,25 +97,41 @@ void SubmapsVisualizer::updateVisualizer(const SubmapsVec& submaps_set){
     viewer_.spinOnce();
 }
 
+void SubmapsVisualizer::plotPoseGraphG2O(const GraphConstructor& graph, const SubmapsVec& submaps_set){
 
-void SubmapsVisualizer::plotPoseGraphG2O(const GraphConstructor& graph){
+    // Clean initial graph
+    viewer_.removeAllPointClouds(vp2_);
+    viewer_.removeAllCoordinateSystems(vp2_);
+    viewer_.removeAllShapes(vp2_);
+    viewer_.addCoordinateSystem(5.0, "reference_frame", vp2_);
 
-    // TODO: check to and from vertices
-    Vector3i dr_color = Vector3i(rand() % 256, rand() % 256, rand() % 256);
+    // Update pointclouds
     unsigned int i = 0;
-    for(EdgeSE3* edgeDR: graph.drEdges_){
-        VertexSE3* from = static_cast<VertexSE3*>(edgeDR->vertex(1));
-        VertexSE3* to = static_cast<VertexSE3*>(edgeDR->vertex(0));
-        Eigen::Vector3d from_ps = from->estimate().translation();
-        Eigen::Vector3d to_ps = to->estimate().translation();
-        viewer_.addArrow(PointT(from_ps[0],from_ps[1],from_ps[2]), PointT(to_ps[0],to_ps[1],to_ps[2]),
-                dr_color[0], dr_color[1], dr_color[2], false, "dr_edge_" + std::to_string(i), vp2_);
+    PointCloudT::Ptr submap_ptr (new PointCloudT);
+    for(const SubmapObj& submap: submaps_set){
+        submap_ptr.reset(new PointCloudT(submap.submap_pcl_));
+        PointCloudColorHandlerCustom<PointT> cloud_color(submap_ptr, submap.colors_[0], submap.colors_[1], submap.colors_[2]);
+        viewer_.addPointCloud(submap_ptr, cloud_color, "cloud_" + std::to_string(i), vp2_);
+        viewer_.addCoordinateSystem(3.0, submap.submap_tf_, "cloud_" + std::to_string(i), vp2_);
         i++;
     }
 
+    // Plot initial trajectory estimate
+    i = 0;
+    Vector3i dr_color = Vector3i(rand() % 256, rand() % 256, rand() % 256);
+    for(unsigned int j=0; j<submaps_set.size()-1; j++){
+        SubmapObj submap_fr = submaps_set.at(j+1);
+        Eigen::Vector3d from_ps = submap_fr.submap_tf_.translation().cast<double>();
+        SubmapObj submap_to = submaps_set.at(j);
+        Eigen::Vector3d to_ps = submap_to.submap_tf_.translation().cast<double>();
+        viewer_.addArrow(PointT(from_ps[0],from_ps[1],from_ps[2]), PointT(to_ps[0],to_ps[1],to_ps[2]),
+                dr_color[0], dr_color[1], dr_color[2], false, "final_dr_edge_" + std::to_string(j), vp2_);
+    }
+
+    // Plot LC edges
     i = 0;
     Vector3i lc_color = Vector3i(rand() % 256, rand() % 256, rand() % 256);
-    for(EdgeSE3* edgeLC: graph.edges_){
+    for(EdgeSE3* edgeLC: graph.lcEdges_){
         VertexSE3* from = static_cast<VertexSE3*>(edgeLC->vertex(0));
         VertexSE3* to = static_cast<VertexSE3*>(edgeLC->vertex(1));
         Eigen::Vector3d from_ps = from->estimate().translation();
@@ -124,6 +140,7 @@ void SubmapsVisualizer::plotPoseGraphG2O(const GraphConstructor& graph){
                 lc_color[0], lc_color[1], lc_color[2], false, "lc_edge_" + std::to_string(i), vp2_);
         i++;
     }
+
     viewer_.spinOnce();
 }
 
@@ -149,7 +166,7 @@ void SubmapsVisualizer::plotPoseGraphCeres(const ceres::optimizer::MapOfPoses& p
         final_tf.translation() = pose_i.p.cast<float>();
 
         // Transform submap_i pcl and tf
-        pcl::transformPointCloud(submap.submap_pcl_, submap.submap_pcl_, final_tf.matrix() * submap.submap_tf_.inverse().matrix());
+        pcl::transformPointCloud(submap.submap_pcl_, submap.submap_pcl_, (final_tf * submap.submap_tf_.inverse()).matrix());
         submap.submap_tf_ = final_tf;
 
         // Plot pcl and tf

@@ -28,6 +28,8 @@ using namespace std;
 using namespace Eigen;
 using namespace g2o;
 
+typedef std::vector<Eigen::Isometry3d, Eigen::aligned_allocator<Eigen::Isometry3d> > tf_vec;
+
 class GraphConstructor{
 
 private:
@@ -36,10 +38,11 @@ public:
 
     vector<VertexSE3*> vertices_;
     vector<EdgeSE3*> drEdges_;
-    vector<EdgeSE3*> edges_;
+    vector<EdgeSE3*> lcEdges_;
     std::vector<Eigen::Matrix2d, Eigen::aligned_allocator<Eigen::Matrix2d> > covs_lc_;
-    std::vector<Eigen::Isometry3d, Eigen::aligned_allocator<Eigen::Isometry3d> > drMeas_;
-    std::vector<Eigen::Isometry3d, Eigen::aligned_allocator<Eigen::Isometry3d> > lcMeas_;
+    tf_vec drMeas_;
+    tf_vec lcMeas_;
+    tf_vec drChain_;
 
     GraphConstructor(std::vector<Eigen::Matrix2d, Eigen::aligned_allocator<Eigen::Matrix2d> > covs_lc);
 
@@ -54,7 +57,7 @@ public:
 
     void createLCEdge(const SubmapObj& submap_from, const SubmapObj& submap_to);
 
-    void createInitialEstimate();
+    void createInitialEstimate(SubmapsVec &submaps_set);
 
     void createDREdge(const SubmapObj& submap);
 };

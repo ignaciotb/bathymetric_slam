@@ -21,12 +21,12 @@ Matrix<double, 6,6> generateGaussianNoise(GaussianGen& transSampler,
     bool randomSeed = false;
     std::vector<double> noiseTranslation;
     std::vector<double> noiseRotation;
-    noiseTranslation.push_back(0.005);
-    noiseTranslation.push_back(0.005);
-    noiseTranslation.push_back(0.01);
-    noiseRotation.push_back(0.01);
-    noiseRotation.push_back(0.01);
-    noiseRotation.push_back(0.005);
+    noiseTranslation.push_back(2);
+    noiseTranslation.push_back(2);
+    noiseTranslation.push_back(0.0001);
+    noiseRotation.push_back(0.0001);
+    noiseRotation.push_back(0.0001);
+    noiseRotation.push_back(0.05);
 
     Eigen::Matrix3d transNoise = Eigen::Matrix3d::Zero();
     for (int i = 0; i < 3; ++i)
@@ -86,7 +86,7 @@ void additiveNoiseToSubmap(GaussianGen& transSampler,
                            SubmapObj& submap_i_1){
 
     Vector3f euler_i = submap_i.submap_tf_.linear().eulerAngles(0,1,2);
-    float roll = 0, pitch = 0, yaw = /*euler_i(0) +*/ 0.1;
+    float roll = 0, pitch = 0, yaw = /*euler_i(0) +*/ 0.5;
     Matrix3f m;
     m = AngleAxisf(roll, Vector3f::UnitX())
         * AngleAxisf(pitch, Vector3f::UnitY())
@@ -117,10 +117,35 @@ void addNoiseToGraph(GraphConstructor& graph_obj){
     Matrix<double, 6,6> information = generateGaussianNoise(transSampler, rotSampler);
 
     // noise for all the edges
-    for (size_t i = 0; i < graph_obj.edges_.size(); ++i) {
-      EdgeSE3* e = graph_obj.edges_[i];
-      Eigen::Quaterniond gtQuat = (Eigen::Quaterniond)e->measurement().linear();
-      Eigen::Vector3d gtTrans = e->measurement().translation();
+//    for (size_t i = 0; i < graph_obj.edges_.size(); ++i) {
+////      EdgeSE3* e = graph_obj.edges_[i];
+//      Eigen::Isometry3d meas_i = graph_obj.lcMeas_.at(i);
+//      Eigen::Quaterniond gtQuat = (Eigen::Quaterniond)meas_i.linear();
+//      Eigen::Vector3d gtTrans = meas_i.translation();
+
+//      Eigen::Vector3d quatXYZ = rotSampler.generateSample();
+//      double qw = 1.0 - quatXYZ.norm();
+//      if (qw < 0) {
+//        qw = 0.;
+//        cerr << "x";
+//      }
+//      Eigen::Quaterniond rot(qw, quatXYZ.x(), quatXYZ.y(), quatXYZ.z());
+//      rot.normalize();
+//      Eigen::Vector3d trans = transSampler.generateSample();
+//      rot = gtQuat * rot;
+//      trans = gtTrans + trans;
+
+//      Eigen::Isometry3d noisyMeasurement = (Eigen::Isometry3d) rot;
+//      noisyMeasurement.translation() = trans;
+////      e->setMeasurement(noisyMeasurement);
+//      graph_obj.lcMeas_.at(i) = noisyMeasurement;
+//    }
+
+    // noise for all the edges
+    for (size_t i = 0; i < graph_obj.drEdges_.size(); ++i) {
+      Eigen::Isometry3d meas_i = graph_obj.drMeas_.at(i);
+      Eigen::Quaterniond gtQuat = (Eigen::Quaterniond)meas_i.linear();
+      Eigen::Vector3d gtTrans = meas_i.translation();
 
       Eigen::Vector3d quatXYZ = rotSampler.generateSample();
       double qw = 1.0 - quatXYZ.norm();
@@ -134,35 +159,13 @@ void addNoiseToGraph(GraphConstructor& graph_obj){
       rot = gtQuat * rot;
       trans = gtTrans + trans;
 
-      Eigen::Isometry3d noisyMeasurement = (Eigen::Isometry3d) rot;
-      noisyMeasurement.translation() = trans;
-      e->setMeasurement(noisyMeasurement);
-    }
-
-    // noise for all the edges
-    for (size_t i = 0; i < graph_obj.drEdges_.size(); ++i) {
-      EdgeSE3* e = graph_obj.drEdges_[i];
-      Eigen::Quaterniond gtQuat = (Eigen::Quaterniond)e->measurement().linear();
-      Eigen::Vector3d gtTrans = e->measurement().translation();
-
-      Eigen::Vector3d quatXYZ = rotSampler.generateSample();
-      double qw = 1.0 - quatXYZ.norm();
-      if (qw < 0) {
-        qw = 0.;
-        cerr << "x";
-      }
-      Eigen::Quaterniond rot(1, 0,0,0);
-      rot.normalize();
-      Eigen::Vector3d trans = {0,0,0};//transSampler.generateSample();
-      rot = gtQuat * rot;
-      trans = gtTrans + trans;
-
-      std::cout << "DR " << i << " " << gtTrans.transpose() << std::endl;
-      std::cout << gtQuat.coeffs() << std::endl;
+//      std::cout << "DR " << i << " " << gtTrans.transpose() << std::endl;
+//      std::cout << gtQuat.coeffs() << std::endl;
 
       Eigen::Isometry3d noisyMeasurement = (Eigen::Isometry3d) rot;
       noisyMeasurement.translation() = trans;
-      e->setMeasurement(noisyMeasurement);
+      graph_obj.drMeas_.at(i) = noisyMeasurement;
+
     }
 }
 

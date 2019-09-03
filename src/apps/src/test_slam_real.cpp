@@ -160,20 +160,20 @@ int main(int argc, char** argv){
     PointsT gt_track = trackToMatrixSubmap(submaps_gt);
     benchmark.add_ground_truth(gt_map, gt_track);
 
-    // Add Gaussian noise to vehicle's pose among submaps
-    GaussianGen transSampler, rotSampler;
-    Matrix<double, 6,6> information = generateGaussianNoise(transSampler, rotSampler);
-    unsigned int i = 0;
-    for(SubmapObj& submap_i: submaps_gt){
-        if(submap_i.submap_id_ == 0){continue;}
-        i++;
-        additiveNoiseToSubmap(transSampler, rotSampler, submap_i, submaps_gt.at(i-1));
-    }
+//    // Add Gaussian noise to vehicle's pose among submaps
+//    GaussianGen transSampler, rotSampler;
+//    Matrix<double, 6,6> information = generateGaussianNoise(transSampler, rotSampler);
+//    unsigned int i = 0;
+//    for(SubmapObj& submap_i: submaps_gt){
+//        if(submap_i.submap_id_ == 0){continue;}
+//        i++;
+//        additiveNoiseToSubmap(transSampler, rotSampler, submap_i, submaps_gt.at(i-1));
+//    }
 
-    // Benchmark noisy
-    PointsT corrupt_map = pclToMatrixSubmap(submaps_gt);
-    PointsT corrupt_track = trackToMatrixSubmap(submaps_gt);
-    benchmark.add_benchmark(corrupt_map, corrupt_track, "corrupted");
+//    // Benchmark noisy
+//    PointsT corrupt_map = pclToMatrixSubmap(submaps_gt);
+//    PointsT corrupt_track = trackToMatrixSubmap(submaps_gt);
+//    benchmark.add_benchmark(corrupt_map, corrupt_track, "corrupted");
 
     // Visualization
     PCLVisualizer viewer ("Submaps viewer");
@@ -265,9 +265,9 @@ int main(int argc, char** argv){
 
             // Register overlapping submaps
             submap_trg = gicp_reg->constructTrgSubmap(submaps_reg, submap_i.overlaps_idx_);
-            if(gicp_reg->gicpSubmapRegistration(submap_trg, submap_i)){
+//            if(gicp_reg->gicpSubmapRegistration(submap_trg, submap_i)){
                 submap_final = submap_i;
-            }
+//            }
             submap_trg.submap_pcl_.clear();
 
             // Create loop closures
@@ -289,8 +289,8 @@ int main(int argc, char** argv){
 
     // Plot Pose graph
 //#if INTERACTIVE == 1
-    visualizer->updateVisualizer(submaps_reg);
-    visualizer->plotPoseGraphG2O(*graph_obj);
+//    visualizer->updateVisualizer(submaps_reg);
+    visualizer->plotPoseGraphG2O(*graph_obj, submaps_reg);
     while(!viewer.wasStopped ()){
         viewer.spinOnce ();
     }
@@ -301,6 +301,8 @@ int main(int argc, char** argv){
     PointsT reg_map = pclToMatrixSubmap(submaps_reg);
     PointsT reg_track = trackToMatrixSubmap(submaps_reg);
     benchmark.add_benchmark(reg_map, reg_track, "registered");
+
+    addNoiseToGraph(*graph_obj);
 
     // Save graph to output g2o file (optimization can be run with G2O)
     string outFilename = "graph.g2o";

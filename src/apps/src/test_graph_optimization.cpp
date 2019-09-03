@@ -24,7 +24,7 @@
 
 #include "data_tools/benchmark.h"
 
-#define INTERACTIVE 1
+#define INTERACTIVE 0
 
 using namespace Eigen;
 using namespace std;
@@ -57,21 +57,6 @@ int main(int argc, char** argv){
     PointsT gt_track = trackofSubmap(submaps_gt);
     benchmark.add_ground_truth(gt_map, gt_track);
 
-    // Add additive Gaussian noise to vehicle's pose among submaps
-    GaussianGen transSampler, rotSampler;
-    Matrix<double, 6,6> information = generateGaussianNoise(transSampler, rotSampler);
-    int i = 0;
-    for(SubmapObj& submap_i: submaps_gt){
-        if(submap_i.submap_id_==0){continue;}
-        additiveNoiseToSubmap(transSampler, rotSampler, submap_i, submaps_gt.at(i));
-        i++;
-    }
-
-    // Benchmar Initial
-    PointsT init_map = pclToMatrixSubmap(submaps_gt);
-    PointsT init_track = trackToMatrixSubmap(submaps_gt);
-    benchmark.add_benchmark(init_map, init_track, "noisy");
-
     // Visualization
     PCLVisualizer viewer ("Submaps viewer");
     SubmapsVisualizer* visualizer = new SubmapsVisualizer(viewer);
@@ -80,7 +65,6 @@ int main(int argc, char** argv){
         viewer.spinOnce ();
     }
     viewer.resetStoppedFlag();
-
 
     // GICP reg for submaps
     SubmapRegistration* gicp_reg = new SubmapRegistration();
@@ -135,10 +119,10 @@ int main(int argc, char** argv){
             submap_trg = gicp_reg->constructTrgSubmap(submaps_reg, submap_i.overlaps_idx_);
 
             // Registration
-            if(gicp_reg->gicpSubmapRegistration(submap_trg, submap_i)){
+//            if(gicp_reg->gicpSubmapRegistration(submap_trg, submap_i)){
                 // If GICP converged, generate loop closure edges
                 graph_obj->findLoopClosures(submap_i, submaps_reg, 0.0001);
-            }
+//            }
         }
         submaps_reg.pop_back();
         submaps_reg.push_back(submap_i);
@@ -151,24 +135,30 @@ int main(int argc, char** argv){
         }
         viewer.resetStoppedFlag();
 #endif
-
         // Cleaning
         submap_trg.submap_pcl_.clear();
         submaps_prev.clear();
     }
 
-    // Plot Pose graph
-#if INTERACTIVE == 1
-    visualizer->plotPoseGraphG2O(*graph_obj);
-    while(!viewer.wasStopped ()){
-        viewer.spinOnce ();
-    }
-    viewer.resetStoppedFlag();
-#endif
+    // Add noise to edges on the graph
+    addNoiseToGraph(*graph_obj);
 
     // Save graph to output g2o file (optimization can be run with G2O)
     string outFilename = "graph.g2o";
     graph_obj->saveG2OFile(outFilename);
+
+    // Create initial kinematic chain and visualize
+    graph_obj->createInitialEstimate(submaps_reg);
+    visualizer->plotPoseGraphG2O(*graph_obj, submaps_reg);
+    while(!viewer.wasStopped ()){
+        viewer.spinOnce ();
+    }
+    viewer.resetStoppedFlag();
+
+    // Benchmar noisy
+    PointsT init_map = pclToMatrixSubmap(submaps_reg);
+    PointsT init_track = trackToMatrixSubmap(submaps_reg);
+    benchmark.add_benchmark(init_map, init_track, "initial");
 
     // Optimize graph
     google::InitGoogleLogging(argv[0]);
@@ -179,9 +169,12 @@ int main(int argc, char** argv){
     while(!viewer.wasStopped ()){
         viewer.spinOnce ();
     }
+    viewer.resetStoppedFlag();
 
     PointsT opt_map = pclToMatrixSubmap(submaps_reg);
-    benchmark.add_benchmark(opt_map, gt_track, "optimized");
+    PointsT opt_track = trackToMatrixSubmap(submaps_reg);
+    benchmark.add_benchmark(opt_map, opt_track, "optimized");
+    benchmark.print_summary();
 
     delete(gicp_reg);
     delete(graph_obj);

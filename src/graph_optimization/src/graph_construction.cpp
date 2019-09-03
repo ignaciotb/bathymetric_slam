@@ -103,7 +103,7 @@ void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapOb
     }
 
     std::cout << "LC edge from " << submap_from.submap_id_ << " to " << submap_to.submap_id_ << std::endl;
-    edges_.push_back(e);
+    lcEdges_.push_back(e);
     lcMeas_.push_back(t);
 }
 
@@ -121,18 +121,26 @@ void GraphConstructor::findLoopClosures(SubmapObj& submap_i, const SubmapsVec& s
 }
 
 
-void GraphConstructor::createInitialEstimate(){
+void GraphConstructor::createInitialEstimate(SubmapsVec& submaps_set){
 
-    // Concatenate all the odometry constraints to compute the initial state
-    std::cout << "Number of DR edges " << drEdges_.size() << std::endl;
-    for (size_t i =0; i < drEdges_.size(); ++i) {
-        std::cout << "DR edge " << i << std::endl;
+    // Concatenate all the odometry constraints to compute the initial kinematic chain
+    for (size_t i =0; i < drEdges_.size(); i++) {
+        Eigen::Isometry3d meas_i = drMeas_.at(i);
         EdgeSE3* e = drEdges_[i];
         VertexSE3* from = static_cast<VertexSE3*>(e->vertex(0));
-        VertexSE3* to = static_cast<VertexSE3*>(e->vertex(1));
-        HyperGraph::VertexSet aux;
-        aux.insert(from);
-        e->initialEstimate(aux, to);
+
+        Eigen::Isometry3d estimate_i = from->estimate() * meas_i;
+//        std::cout << "From estimate " << from->estimate().translation().transpose() << std::endl;
+//        std::cout << "Measurement " << meas_i.translation().transpose() << std::endl;
+//        std::cout << "Estimate " << estimate_i.translation().transpose() << std::endl;
+
+        // Transform submap_i pcl and tf
+        pcl::transformPointCloud(submaps_set.at(i+1).submap_pcl_, submaps_set.at(i+1).submap_pcl_,
+                                 (estimate_i.cast<float>() * submaps_set.at(i+1).submap_tf_.cast<float>().inverse()).matrix());
+
+        submaps_set.at(i+1).submap_tf_ = estimate_i.cast<float>();
+
+        drChain_.push_back(estimate_i);
     }
 }
 
@@ -150,11 +158,15 @@ void GraphConstructor::saveG2OFile(std::string outFilename){
     ostream& fout = outFilename != "-" ? fileOutputStream : std::cout;
 
     // Concatenate DR and LC edges (DR go first, according to g2o convention)
-    edges_.insert(edges_.begin(), drEdges_.begin(), drEdges_.end());
-    lcMeas_.insert(lcMeas_.begin(), drMeas_.begin(), drMeas_.end());
+    vector<EdgeSE3*> edges;
+    edges.insert(edges.begin(), lcEdges_.begin(), lcEdges_.end());
+    edges.insert(edges.begin(), drEdges_.begin(), drEdges_.end());
+    tf_vec meas;
+    meas.insert(meas.begin(), lcMeas_.begin(), lcMeas_.end());
+    meas.insert(meas.begin(), drMeas_.begin(), drMeas_.end());
 
     string vertexTag = Factory::instance()->tag(vertices_[0]);
-    string edgeTag = Factory::instance()->tag(edges_[0]);
+    string edgeTag = Factory::instance()->tag(edges[0]);
 
     for (size_t i = 0; i < vertices_.size(); ++i) {
       VertexSE3* v = vertices_[i];
@@ -164,14 +176,14 @@ void GraphConstructor::saveG2OFile(std::string outFilename){
     }
 
     // Output
-    for (size_t i = 0; i < edges_.size(); ++i) {
-      EdgeSE3* e = edges_[i];
+    for (size_t i = 0; i < edges.size(); ++i) {
+      EdgeSE3* e = edges[i];
       VertexSE3* from = static_cast<VertexSE3*>(e->vertex(0));
       VertexSE3* to = static_cast<VertexSE3*>(e->vertex(1));
       fout << edgeTag << " " << from->id() << " " << to->id() << " ";
 //      Vector7 meas=g2o::internal::toVectorQT(e->measurement());
-      Vector7 meas=g2o::internal::toVectorQT(lcMeas_.at(i));
-      for (int i=0; i<7; i++) fout  << meas[i] << " ";
+      Vector7 meas_i=g2o::internal::toVectorQT(meas.at(i));
+      for (int i=0; i<7; i++) fout  << meas_i[i] << " ";
       for (int i=0; i<e->information().rows(); i++){
         for (int j=i; j<e->information().cols(); j++) {
           fout <<  e->information()(i,j) << " ";

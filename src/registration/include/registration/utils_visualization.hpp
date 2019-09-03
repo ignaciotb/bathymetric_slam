@@ -50,7 +50,9 @@ public:
 
     void updateVisualizer(const SubmapsVec& submaps_set);
 
-    void plotPoseGraphG2O(const GraphConstructor& graph);
+//    void plotPoseGraphG2O(const GraphConstructor& graph);
+
+    void plotPoseGraphG2O(const GraphConstructor& graph, const SubmapsVec &submaps_set);
 
     void plotPoseGraphCeres(const ceres::optimizer::MapOfPoses& poses, SubmapsVec &submaps_set);
 
