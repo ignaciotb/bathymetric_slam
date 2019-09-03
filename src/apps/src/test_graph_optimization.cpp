@@ -158,7 +158,7 @@ int main(int argc, char** argv){
     // Benchmar noisy
     PointsT init_map = pclToMatrixSubmap(submaps_reg);
     PointsT init_track = trackToMatrixSubmap(submaps_reg);
-    benchmark.add_benchmark(init_map, init_track, "initial");
+    benchmark.add_benchmark(init_map, init_track, "corrupted");
 
     // Optimize graph Ceres
     google::InitGoogleLogging(argv[0]);

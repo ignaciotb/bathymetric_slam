@@ -39,6 +39,8 @@ using namespace Eigen;
 using namespace std;
 using namespace g2o;
 
+typedef std::vector<Eigen::Matrix2d, Eigen::aligned_allocator<Eigen::Matrix2d> > covs;
+
 /// Read loop closures from external file
 std::vector<std::vector<int> > readGTLoopClosures(string& fileName, int submaps_nb){
 
@@ -72,7 +74,6 @@ std::pair<Eigen::Matrix2d, Eigen::Matrix2d> readCovMatrix(const std::string& fil
         exit(0);
     }
 
-//    std::cout << file_name << std::endl;
     int i = 0;
     while (std::getline(input, line)){
         std::istringstream iss(line);
@@ -82,11 +83,61 @@ std::pair<Eigen::Matrix2d, Eigen::Matrix2d> readCovMatrix(const std::string& fil
         else{posterior.row(i-2) = Eigen::Vector2d(a, b).transpose();}
         i++;
     }
-//    std::cout << prior << std::endl;
-//    std::cout << std::endl;
-//    std::cout << posterior << std::endl;
-
     return std::make_pair(prior, posterior);
+}
+
+// TODO: do this properly
+covs readCovsFromFiles(boost::filesystem::path folder){
+
+    typedef vector<boost::filesystem::path> v_path;
+    v_path v;
+    copy(boost::filesystem::directory_iterator(folder),
+         boost::filesystem::directory_iterator(), back_inserter(v));
+    sort(v.begin(), v.end());
+
+    // Read covs generated from NN
+    std::vector<std::string> files;
+    for (v_path::const_iterator it(v.begin()), it_end(v.end()); it != it_end; ++it) {
+        if (boost::filesystem::is_directory(*it)) {
+            continue;
+        }
+
+        if (boost::filesystem::extension(*it) != ".txt") {
+            continue;
+        }
+        files.push_back(it->string());
+    }
+
+    covs covs_lc(files.size());
+    for (unsigned int file =  0; file < files.size(); file++) {
+        std::regex regex("\\_");
+
+        std::vector<std::string> out(
+                        std::sregex_token_iterator(files.at(file).begin(), files.at(file).end(), regex, -1),
+                        std::sregex_token_iterator()
+                        );
+
+        string final = out.back();
+
+        std::regex regex2("\\.");
+
+        std::vector<std::string> out2(
+                        std::sregex_token_iterator(final.begin(), final.end(), regex2, -1),
+                        std::sregex_token_iterator()
+                        );
+
+        string final2 = out2.front();
+        std::cout << std::stoi(final2)<< '\n';
+
+        Eigen::Matrix2d prior, posterior;
+        std::tie(prior, posterior) = readCovMatrix(files.at(file));
+        covs_lc.at(std::stoi(final2)) = posterior;
+
+        out.clear();
+        out2.clear();
+    }
+
+    return covs_lc;
 }
 
 
@@ -106,7 +157,6 @@ int main(int argc, char** argv){
         cout << options.help({ "", "Group" }) << endl;
         exit(0);
     }
-    boost::filesystem::path folder(folder_str);
     boost::filesystem::path submaps_path(path_str);
     std_data::pt_submaps ss = std_data::read_data<std_data::pt_submaps>(submaps_path);
     string loopsFilename = "loop_closures.txt";
@@ -114,24 +164,13 @@ int main(int argc, char** argv){
     // Parse submaps from cereal
     SubmapsVec submaps_gt = parseSubmapsAUVlib(ss);
 
-    // Read covs generated from NN
-    std::vector<Eigen::Matrix2d, Eigen::aligned_allocator<Eigen::Matrix2d> > covs_lc;
-    if(!folder_str.empty()){
-        for (auto& entry : boost::make_iterator_range(boost::filesystem::directory_iterator(folder), {})) {
-//            std::cout << entry << "\n";
-            if (boost::filesystem::is_directory(entry.path())) {
-                continue;
-            }
-
-            if (boost::filesystem::extension(entry.path()) != ".txt") {
-                continue;
-            }
-
-            Eigen::Matrix2d prior, posterior;
-            std::tie(prior, posterior) = readCovMatrix(entry.path().string());
-            covs_lc.push_back(posterior);
-        }
+    // Read training data files from folder
+    boost::filesystem::path folder(folder_str);
+    if(!boost::filesystem::is_directory(folder)) {
+        std::cout << folder << " is not a directory" << std::endl;
+        return 0;
     }
+    covs covs_lc = readCovsFromFiles(folder);
 
     // Parameters for downsampling and filtering of submaps
     PointCloudT::Ptr cloud_ptr (new PointCloudT);
@@ -160,21 +199,6 @@ int main(int argc, char** argv){
     PointsT gt_track = trackToMatrixSubmap(submaps_gt);
     benchmark.add_ground_truth(gt_map, gt_track);
 
-//    // Add Gaussian noise to vehicle's pose among submaps
-//    GaussianGen transSampler, rotSampler;
-//    Matrix<double, 6,6> information = generateGaussianNoise(transSampler, rotSampler);
-//    unsigned int i = 0;
-//    for(SubmapObj& submap_i: submaps_gt){
-//        if(submap_i.submap_id_ == 0){continue;}
-//        i++;
-//        additiveNoiseToSubmap(transSampler, rotSampler, submap_i, submaps_gt.at(i-1));
-//    }
-
-//    // Benchmark noisy
-//    PointsT corrupt_map = pclToMatrixSubmap(submaps_gt);
-//    PointsT corrupt_track = trackToMatrixSubmap(submaps_gt);
-//    benchmark.add_benchmark(corrupt_map, corrupt_track, "corrupted");
-
     // Visualization
     PCLVisualizer viewer ("Submaps viewer");
     viewer.loadCameraParameters("Antarctica7");
@@ -185,19 +209,6 @@ int main(int argc, char** argv){
     }
     viewer.resetStoppedFlag();
 //    viewer.saveCameraParameters("Antarctica7");
-
-
-
-#if NOISE == 1
-
-    // Benchmark noisy
-    PointsT corrupt_map = pclToMatrixSubmap(submaps_gt);
-    PointsT corrupt_track = trackToMatrixSubmap(submaps_gt);
-    benchmark.add_benchmark(corrupt_map, corrupt_track, "corrupted");
-
-    // Get GT loop closures from external file
-    std::vector<std::vector<int> > vecLCs = readGTLoopClosures(loopsFilename, submaps_gt.size());
-#endif
 
     // GICP reg for submaps
     SubmapRegistration* gicp_reg = new SubmapRegistration();
@@ -217,7 +228,6 @@ int main(int argc, char** argv){
                   << submap_i.swath_id_ << " ------------"<< std::endl;
 
         // Look for loop closures
-#if NOISE == 0
         for(SubmapObj& submap_k: submaps_reg){
             // Don't look for overlaps between submaps of the same swath or the prev submap
             if(/*submap_k.swath_id_ != submap_i.swath_id_ ||*/
@@ -227,9 +237,6 @@ int main(int argc, char** argv){
         }
         submap_i.findOverlaps(submaps_prev);
         submaps_prev.clear();
-#else
-        submap_i.overlaps_idx_ = vecLCs.at(submap_i.submap_id_);
-#endif
 
         // Add submap_i to registered set (just for visualization here)
         submaps_reg.push_back(submap_i);
@@ -253,21 +260,19 @@ int main(int argc, char** argv){
         // If potential loop closure detected
         SubmapObj submap_final = submap_i;
         if(!submap_i.overlaps_idx_.empty()){
-//            std::cout << "Overlaps of submap " << submap_i.submap_id_ << std::endl;
             if(fileOutputStream.is_open()){
                 fileOutputStream << submap_i.submap_id_;
                 for(unsigned int j=0; j<submap_i.overlaps_idx_.size(); j++){
                     fileOutputStream << " " << submap_i.overlaps_idx_.at(j);
-//                    std::cout << submap_i.overlaps_idx_.at(j) << std::endl;
                 }
                 fileOutputStream << "\n";
             }
 
             // Register overlapping submaps
             submap_trg = gicp_reg->constructTrgSubmap(submaps_reg, submap_i.overlaps_idx_);
-//            if(gicp_reg->gicpSubmapRegistration(submap_trg, submap_i)){
+            if(gicp_reg->gicpSubmapRegistration(submap_trg, submap_i)){
                 submap_final = submap_i;
-//            }
+            }
             submap_trg.submap_pcl_.clear();
 
             // Create loop closures
@@ -287,21 +292,19 @@ int main(int argc, char** argv){
     }
     fileOutputStream.close();
 
-    // Plot Pose graph
-//#if INTERACTIVE == 1
-//    visualizer->updateVisualizer(submaps_reg);
-    visualizer->plotPoseGraphG2O(*graph_obj, submaps_reg);
+    // Update visualizer
+    visualizer->updateVisualizer(submaps_reg);
     while(!viewer.wasStopped ()){
         viewer.spinOnce ();
     }
     viewer.resetStoppedFlag();
-//#endif
 
-    // Benchmark Registered
+    // Benchmar after GICP
     PointsT reg_map = pclToMatrixSubmap(submaps_reg);
     PointsT reg_track = trackToMatrixSubmap(submaps_reg);
     benchmark.add_benchmark(reg_map, reg_track, "registered");
 
+    // Add noise to edges on the graph
     addNoiseToGraph(*graph_obj);
 
     // Save graph to output g2o file (optimization can be run with G2O)
@@ -309,20 +312,34 @@ int main(int argc, char** argv){
 //    string outFilename = "/home/torroba/workspace/g2o/bin/g2o.g2o";
     graph_obj->saveG2OFile(outFilename);
 
+    // Create initial DR chain and visualize
+    graph_obj->createInitialEstimate(submaps_reg);
+    visualizer->plotPoseGraphG2O(*graph_obj, submaps_reg);
+    while(!viewer.wasStopped ()){
+        viewer.spinOnce ();
+    }
+    viewer.resetStoppedFlag();
+
+    // Benchmar noisy
+    PointsT init_map = pclToMatrixSubmap(submaps_reg);
+    PointsT init_track = trackToMatrixSubmap(submaps_reg);
+    benchmark.add_benchmark(init_map, init_track, "corrupted");
+
     // Optimize graph
     google::InitGoogleLogging(argv[0]);
     ceres::optimizer::MapOfPoses poses = ceres::optimizer::ceresSolver(outFilename, graph_obj->drEdges_.size());
 
     // Visualize and update submaps with Ceres output
-    ceres::optimizer::updateSubmapsCeres(poses, submaps_reg);
-    visualizer->plotPoseGraphCeres(submaps_reg);
+    ceres::optimizer::updateSubmapsCeres(poses, submaps_gt);
+    visualizer->plotPoseGraphCeres(submaps_gt);
     while(!viewer.wasStopped ()){
         viewer.spinOnce ();
     }
+    viewer.resetStoppedFlag();
 
     // Benchmark Optimized
-    PointsT opt_map = pclToMatrixSubmap(submaps_reg);
-    PointsT opt_track = trackToMatrixSubmap(submaps_reg);
+    PointsT opt_map = pclToMatrixSubmap(submaps_gt);
+    PointsT opt_track = trackToMatrixSubmap(submaps_gt);
     benchmark.add_benchmark(opt_map, opt_track, "optimized");
     benchmark.print_summary();
 

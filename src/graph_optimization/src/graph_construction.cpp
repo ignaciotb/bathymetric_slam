@@ -85,6 +85,8 @@ void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapOb
     else{
         // Info matrix from NN training
         Eigen::Matrix2d cov_reg = this->covs_lc_.at(submap_from.submap_id_);
+        std::cout << "Submap " << submap_from.submap_id_ << std::endl;
+        std::cout << cov_reg << std::endl;
         Eigen::VectorXd info_diag(3), info_diag_trans(3);
         info_diag << 10000.0, 10000.0, 1000.0;
         information.topLeftCorner(2,2) = cov_reg;
@@ -92,7 +94,6 @@ void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapOb
         information.block<3,3>(3,3) = info_diag.asDiagonal();
     }
 
-//    std::cout << information << std::endl;
     e->setInformation(information);
 
     // Check resulting COV is positive semi-definite
@@ -130,9 +131,14 @@ void GraphConstructor::createInitialEstimate(SubmapsVec& submaps_set){
         VertexSE3* from = static_cast<VertexSE3*>(e->vertex(0));
 
         Eigen::Isometry3d estimate_i = from->estimate() * meas_i;
+
 //        std::cout << "From estimate " << from->estimate().translation().transpose() << std::endl;
 //        std::cout << "Measurement " << meas_i.translation().transpose() << std::endl;
-//        std::cout << "Estimate " << estimate_i.translation().transpose() << std::endl;
+        Eigen::Matrix4f tf = (estimate_i.cast<float>() * submaps_set.at(i+1).submap_tf_.cast<float>().inverse()).matrix();
+
+//        std::cout << "Estimate " << i << " " << std::endl;
+//        std::cout << tf << std::endl;
+//        std::cout << "------" << std::endl;
 
         // Transform submap_i pcl and tf
         pcl::transformPointCloud(submaps_set.at(i+1).submap_pcl_, submaps_set.at(i+1).submap_pcl_,
