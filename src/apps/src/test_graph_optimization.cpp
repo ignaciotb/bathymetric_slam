@@ -66,6 +66,11 @@ int main(int argc, char** argv){
     }
     viewer.resetStoppedFlag();
 
+    // Noise generators
+    GaussianGen transSampler, rotSampler;
+    Matrix<double, 6,6> information = generateGaussianNoise(transSampler, rotSampler);
+//    addNoiseToMap(transSampler, rotSampler, submaps_gt);
+
     // GICP reg for submaps
     SubmapRegistration* gicp_reg = new SubmapRegistration();
 
@@ -141,7 +146,7 @@ int main(int argc, char** argv){
     }
 
     // Add noise to edges on the graph
-    addNoiseToGraph(*graph_obj);
+    addNoiseToGraph(transSampler, rotSampler, *graph_obj);
 
     // Save graph to output g2o file (optimization can be run with G2O)
     string outFilename = "graph.g2o";

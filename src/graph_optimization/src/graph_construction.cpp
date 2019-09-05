@@ -45,13 +45,14 @@ void GraphConstructor::createDREdge(const SubmapObj& submap){
     e->setMeasurement(t);
     e->setInformation(submap.submap_info_);
 
-    std::cout << "DR edge from " << submap.submap_id_ -1 << " to " << submap.submap_id_<< std::endl;
     drEdges_.push_back(e);
     drMeas_.push_back(t);
 }
 
 
 void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapObj& submap_to){
+
+    std::cout << "LC edge from " << submap_from.submap_id_ << " to " << submap_to.submap_id_ << std::endl;
 
     // Generate loop closure edges
     VertexSE3* from = vertices_[submap_from.submap_id_];
@@ -78,22 +79,23 @@ void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapOb
         Eigen::VectorXd info_diag(3), info_diag_trans(3);
         double z = cov_matrix.normalized().inverse().cast<double>().row(2)(2);
         info_diag << 10000.0, 10000.0, 1000.0;
-        info_diag_trans << z, z, 10000.0;
-        information.block<3,3>(0,0) = info_diag.asDiagonal()*0.00006;
+//        info_diag_trans << z, z, 10000.0;
+        info_diag_trans << 1, 1, 10000.0;
+        information.block<3,3>(0,0) = info_diag_trans.asDiagonal();
         information.block<3,3>(3,3) = info_diag.asDiagonal();
     }
     else{
         // Info matrix from NN training
         Eigen::Matrix2d cov_reg = this->covs_lc_.at(submap_from.submap_id_);
-        std::cout << "Submap " << submap_from.submap_id_ << std::endl;
         std::cout << cov_reg << std::endl;
         Eigen::VectorXd info_diag(3), info_diag_trans(3);
         info_diag << 10000.0, 10000.0, 1000.0;
-        information.topLeftCorner(2,2) = cov_reg;
+        information.topLeftCorner(2,2) = cov_reg.inverse();
         information(2,2) = 10000;
         information.block<3,3>(3,3) = info_diag.asDiagonal();
     }
 
+    std::cout << information << std::endl;
     e->setInformation(information);
 
     // Check resulting COV is positive semi-definite
@@ -103,7 +105,6 @@ void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapOb
         std::exit(0);
     }
 
-    std::cout << "LC edge from " << submap_from.submap_id_ << " to " << submap_to.submap_id_ << std::endl;
     lcEdges_.push_back(e);
     lcMeas_.push_back(t);
 }
@@ -129,12 +130,14 @@ void GraphConstructor::createInitialEstimate(SubmapsVec& submaps_set){
         Eigen::Isometry3d meas_i = drMeas_.at(i);
         EdgeSE3* e = drEdges_[i];
         VertexSE3* from = static_cast<VertexSE3*>(e->vertex(0));
+        VertexSE3* to = static_cast<VertexSE3*>(e->vertex(1));
 
         Eigen::Isometry3d estimate_i = from->estimate() * meas_i;
 
 //        std::cout << "From estimate " << from->estimate().translation().transpose() << std::endl;
 //        std::cout << "Measurement " << meas_i.translation().transpose() << std::endl;
-        Eigen::Matrix4f tf = (estimate_i.cast<float>() * submaps_set.at(i+1).submap_tf_.cast<float>().inverse()).matrix();
+        Eigen::Matrix4f tf = (estimate_i.cast<float>() *
+                              submaps_set.at(i+1).submap_tf_.cast<float>().inverse()).matrix();
 
 //        std::cout << "Estimate " << i << " " << std::endl;
 //        std::cout << tf << std::endl;
@@ -145,6 +148,7 @@ void GraphConstructor::createInitialEstimate(SubmapsVec& submaps_set){
                                  (estimate_i.cast<float>() * submaps_set.at(i+1).submap_tf_.cast<float>().inverse()).matrix());
 
         submaps_set.at(i+1).submap_tf_ = estimate_i.cast<float>();
+        to->setEstimate(estimate_i);
 
         drChain_.push_back(estimate_i);
     }

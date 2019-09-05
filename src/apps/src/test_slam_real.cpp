@@ -33,7 +33,7 @@
 #include <boost/algorithm/string.hpp>
 
 #define INTERACTIVE 0
-#define NOISE 0
+#define VISUAL 0
 
 using namespace Eigen;
 using namespace std;
@@ -111,27 +111,18 @@ covs readCovsFromFiles(boost::filesystem::path folder){
     covs covs_lc(files.size());
     for (unsigned int file =  0; file < files.size(); file++) {
         std::regex regex("\\_");
-
         std::vector<std::string> out(
                         std::sregex_token_iterator(files.at(file).begin(), files.at(file).end(), regex, -1),
-                        std::sregex_token_iterator()
-                        );
-
-        string final = out.back();
+                        std::sregex_token_iterator());
 
         std::regex regex2("\\.");
-
         std::vector<std::string> out2(
-                        std::sregex_token_iterator(final.begin(), final.end(), regex2, -1),
-                        std::sregex_token_iterator()
-                        );
-
-        string final2 = out2.front();
-        std::cout << std::stoi(final2)<< '\n';
+                        std::sregex_token_iterator(out.back().begin(), out.back().end(), regex2, -1),
+                        std::sregex_token_iterator());
 
         Eigen::Matrix2d prior, posterior;
         std::tie(prior, posterior) = readCovMatrix(files.at(file));
-        covs_lc.at(std::stoi(final2)) = posterior;
+        covs_lc.at(std::stoi(out2.front())) = posterior;
 
         out.clear();
         out2.clear();
@@ -140,6 +131,31 @@ covs readCovsFromFiles(boost::filesystem::path folder){
     return covs_lc;
 }
 
+
+void saveOriginalTrajectory(SubmapsVec& submaps_set){
+
+    covs covs_lc;
+    GraphConstructor* graph = new GraphConstructor(covs_lc);
+
+    for(SubmapObj& submap_i: submaps_set){
+        graph->createNewVertex(submap_i);
+
+        // Create DR edge i and store (skip submap 0)
+        if(submap_i.submap_id_ != 0 ){
+            graph->createDREdge(submap_i);
+        }
+    }
+
+    string outFilename = "poses_original.g2o";
+    graph->saveG2OFile(outFilename);
+    ceres::optimizer::MapOfPoses poses;
+    ceres::optimizer::VectorOfConstraints constraints;
+    CHECK(ceres::optimizer::ReadG2oFile(outFilename, &poses, &constraints))
+        << "Error reading the file: " << outFilename;
+
+    CHECK(ceres::optimizer::OutputPoses("poses_original.txt", poses))
+        << "Error outputting to poses_original.txt";
+}
 
 int main(int argc, char** argv){
 
@@ -165,32 +181,29 @@ int main(int argc, char** argv){
     SubmapsVec submaps_gt = parseSubmapsAUVlib(ss);
 
     // Read training data files from folder
+    covs covs_lc;
     boost::filesystem::path folder(folder_str);
-    if(!boost::filesystem::is_directory(folder)) {
-        std::cout << folder << " is not a directory" << std::endl;
-        return 0;
+    if(boost::filesystem::is_directory(folder)) {
+        covs_lc = readCovsFromFiles(folder);
     }
-    covs covs_lc = readCovsFromFiles(folder);
 
     // Parameters for downsampling and filtering of submaps
     PointCloudT::Ptr cloud_ptr (new PointCloudT);
     pcl::UniformSampling<PointT> us_filter;
     us_filter.setInputCloud (cloud_ptr);
-    us_filter.setRadiusSearch(1);
+    us_filter.setRadiusSearch(1);   // 1 for Borno, 2 for Antarctica
     pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor_filter;
     sor_filter.setMeanK (100);
     sor_filter.setStddevMulThresh(2);
 
     // Filter out useless maps manually
     for(SubmapObj& submap_i: submaps_gt){
-        std::cout << "Before preprocessing: " << submap_i.submap_pcl_.points.size() << std::endl;
+//        std::cout << "before " << submap_i.submap_pcl_.size() << std::endl;
         *cloud_ptr = submap_i.submap_pcl_;
         us_filter.setInputCloud(cloud_ptr);
         us_filter.filter(*cloud_ptr);
-//        sor_filter.setInputCloud (cloud_ptr);
-//        sor_filter.filter (*cloud_ptr);
         submap_i.submap_pcl_ = *cloud_ptr;
-        std::cout << "After preprocessing: " << submap_i.submap_pcl_.points.size() << std::endl;
+//        std::cout << submap_i.submap_pcl_.size() << std::endl;
     }
 
     // Benchmark GT
@@ -198,8 +211,11 @@ int main(int argc, char** argv){
     PointsT gt_map = pclToMatrixSubmap(submaps_gt);
     PointsT gt_track = trackToMatrixSubmap(submaps_gt);
     benchmark.add_ground_truth(gt_map, gt_track);
+    // Save original trajectory
+    saveOriginalTrajectory(submaps_gt);
 
     // Visualization
+#if VISUAL == 1
     PCLVisualizer viewer ("Submaps viewer");
     viewer.loadCameraParameters("Antarctica7");
     SubmapsVisualizer* visualizer = new SubmapsVisualizer(viewer);
@@ -209,6 +225,7 @@ int main(int argc, char** argv){
     }
     viewer.resetStoppedFlag();
 //    viewer.saveCameraParameters("Antarctica7");
+#endif
 
     // GICP reg for submaps
     SubmapRegistration* gicp_reg = new SubmapRegistration();
@@ -218,6 +235,16 @@ int main(int argc, char** argv){
 
     ofstream fileOutputStream;
     fileOutputStream.open(loopsFilename, std::ofstream::out);
+
+    // Noise generators
+    GaussianGen transSampler, rotSampler;
+    Matrix<double, 6,6> information = generateGaussianNoise(transSampler, rotSampler);
+
+    // Benchmar noisy
+//    addNoiseToMap(transSampler, rotSampler, submaps_gt);
+//    PointsT init_map = pclToMatrixSubmap(submaps_gt);
+//    PointsT init_track = trackToMatrixSubmap(submaps_gt);
+//    benchmark.add_benchmark(init_map, init_track, "corrupted");
 
     SubmapObj submap_trg;
     SubmapsVec submaps_prev;
@@ -254,6 +281,7 @@ int main(int argc, char** argv){
 
         // Create DR edge i and store (skip submap 0)
         if(submap_i.submap_id_ != 0 ){
+            std::cout << "DR edge from " << submap_i.submap_id_ -1 << " to " << submap_i.submap_id_<< std::endl;
             graph_obj->createDREdge(submap_i);
         }
 
@@ -270,6 +298,7 @@ int main(int argc, char** argv){
 
             // Register overlapping submaps
             submap_trg = gicp_reg->constructTrgSubmap(submaps_reg, submap_i.overlaps_idx_);
+            addNoiseToSubmap(transSampler, rotSampler, submap_i); // Add disturbance to source submap
             if(gicp_reg->gicpSubmapRegistration(submap_trg, submap_i)){
                 submap_final = submap_i;
             }
@@ -292,50 +321,53 @@ int main(int argc, char** argv){
     }
     fileOutputStream.close();
 
+#if VISUAL == 1
     // Update visualizer
     visualizer->updateVisualizer(submaps_reg);
     while(!viewer.wasStopped ()){
         viewer.spinOnce ();
     }
     viewer.resetStoppedFlag();
-
-    // Benchmar after GICP
-    PointsT reg_map = pclToMatrixSubmap(submaps_reg);
-    PointsT reg_track = trackToMatrixSubmap(submaps_reg);
-    benchmark.add_benchmark(reg_map, reg_track, "registered");
+#endif
 
     // Add noise to edges on the graph
-    addNoiseToGraph(*graph_obj);
-
-    // Save graph to output g2o file (optimization can be run with G2O)
-    string outFilename = "graph.g2o";
-//    string outFilename = "/home/torroba/workspace/g2o/bin/g2o.g2o";
-    graph_obj->saveG2OFile(outFilename);
+    addNoiseToGraph(transSampler, rotSampler, *graph_obj);
 
     // Create initial DR chain and visualize
     graph_obj->createInitialEstimate(submaps_reg);
+
+#if VISUAL == 1
     visualizer->plotPoseGraphG2O(*graph_obj, submaps_reg);
     while(!viewer.wasStopped ()){
         viewer.spinOnce ();
     }
     viewer.resetStoppedFlag();
+#endif
 
-    // Benchmar noisy
-    PointsT init_map = pclToMatrixSubmap(submaps_reg);
-    PointsT init_track = trackToMatrixSubmap(submaps_reg);
-    benchmark.add_benchmark(init_map, init_track, "corrupted");
+    // Save graph to output g2o file (optimization can be run with G2O)
+    string outFilename = "graph.g2o";
+    // string outFilename = "/home/torroba/workspace/g2o/bin/g2o.g2o";
+    graph_obj->saveG2OFile(outFilename);
+
+    // Benchmar corrupted
+    PointsT reg_map = pclToMatrixSubmap(submaps_reg);
+    PointsT reg_track = trackToMatrixSubmap(submaps_reg);
+    benchmark.add_benchmark(reg_map, reg_track, "corrupted");
 
     // Optimize graph
     google::InitGoogleLogging(argv[0]);
     ceres::optimizer::MapOfPoses poses = ceres::optimizer::ceresSolver(outFilename, graph_obj->drEdges_.size());
-
-    // Visualize and update submaps with Ceres output
     ceres::optimizer::updateSubmapsCeres(poses, submaps_gt);
+
+#if VISUAL == 1
+    // Visualize Ceres output
     visualizer->plotPoseGraphCeres(submaps_gt);
     while(!viewer.wasStopped ()){
         viewer.spinOnce ();
     }
     viewer.resetStoppedFlag();
+    delete(visualizer);
+#endif
 
     // Benchmark Optimized
     PointsT opt_map = pclToMatrixSubmap(submaps_gt);
@@ -343,9 +375,12 @@ int main(int argc, char** argv){
     benchmark.add_benchmark(opt_map, opt_track, "optimized");
     benchmark.print_summary();
 
+    std::string command_str = "./plot_results.py --initial_poses poses_original.txt --corrupted_poses poses_corrupted.txt --optimized_poses poses_optimized.txt";
+    const char *command = command_str.c_str();
+    system(command);
+
     delete(gicp_reg);
     delete(graph_obj);
-    delete(visualizer);
 
     return 0;
 }

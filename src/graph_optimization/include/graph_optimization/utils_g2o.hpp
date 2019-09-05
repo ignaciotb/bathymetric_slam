@@ -41,11 +41,10 @@ void addNoiseToSubmap(GaussianGen& transSampler,
                       GaussianGen& rotSampler,
                       SubmapObj& submap);
 
-void additiveNoiseToSubmap(GaussianGen& transSampler,
-                           GaussianGen& rotSampler,
-                           SubmapObj& submap_i,
-                           SubmapObj& submap_i_1);
+void addNoiseToMap(GaussianGen& transSampler,
+                   GaussianGen& rotSampler,
+                   SubmapsVec& submap_set);
 
-void addNoiseToGraph(GraphConstructor& graph_obj);
+void addNoiseToGraph(GaussianGen &transSampler, GaussianGen &rotSampler, GraphConstructor& graph_obj);
 
 #endif // UTILS_G2O_HPP

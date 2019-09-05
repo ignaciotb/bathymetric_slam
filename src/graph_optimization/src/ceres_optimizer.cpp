@@ -211,10 +211,8 @@ MapOfPoses ceresSolver(const std::string& outFilename, const int drConstraints){
     CHECK(ceres::optimizer::ReadG2oFile(outFilename, &poses, &constraints))
         << "Error reading the file: " << outFilename;
 
-    std::cout << "G2O file read" << std::endl;
-
-    CHECK(ceres::optimizer::OutputPoses("poses_original.txt", poses))
-        << "Error outputting to poses_original.txt";
+    CHECK(ceres::optimizer::OutputPoses("poses_corrupted.txt", poses))
+        << "Error outputting to poses_corrupted.txt";
 
     std::cout << "Original poses output" << std::endl;
 
@@ -229,11 +227,7 @@ MapOfPoses ceresSolver(const std::string& outFilename, const int drConstraints){
     CHECK(ceres::optimizer::OutputPoses("poses_optimized.txt", poses))
         << "Error outputting to poses_optimized.txt";
 
-    //    std::string command_str = "./plot_results.py --initial_poses poses_original.txt --optimized_poses poses_optimized.txt";
-    //    const char *command = command_str.c_str();
-    //    system(command);
-
-return poses;
+    return poses;
 }
 
 void updateSubmapsCeres(const ceres::optimizer::MapOfPoses& poses, SubmapsVec& submaps_set){

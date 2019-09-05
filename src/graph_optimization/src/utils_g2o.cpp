@@ -18,15 +18,15 @@ using namespace Eigen;
 Matrix<double, 6,6> generateGaussianNoise(GaussianGen& transSampler,
                                           GaussianGen& rotSampler){
 
-    bool randomSeed = false;
+    bool randomSeed = true;
     std::vector<double> noiseTranslation;
     std::vector<double> noiseRotation;
-    noiseTranslation.push_back(4);
-    noiseTranslation.push_back(4);
+    noiseTranslation.push_back(3);
+    noiseTranslation.push_back(3);
     noiseTranslation.push_back(0.000000001);
     noiseRotation.push_back(0.000000001);
     noiseRotation.push_back(0.000000001);
-    noiseRotation.push_back(0.1);
+    noiseRotation.push_back(0.001);
 
     Eigen::Matrix3d transNoise = Eigen::Matrix3d::Zero();
     for (int i = 0; i < 3; ++i)
@@ -59,70 +59,54 @@ Matrix<double, 6,6> generateGaussianNoise(GaussianGen& transSampler,
 void addNoiseToSubmap(GaussianGen& transSampler,
                       GaussianGen& rotSampler,
                       SubmapObj& submap){
-    // Noise to rotation
-    Vector3d quatXYZ = rotSampler.generateSample();
+
+    Eigen::Quaterniond gtQuat = (Eigen::Quaterniond)submap.submap_tf_.linear().cast<double>();
+    Eigen::Vector3d gtTrans = submap.submap_tf_.translation().cast<double>();
+
+    Eigen::Vector3d quatXYZ = rotSampler.generateSample();
     double qw = 1.0 - quatXYZ.norm();
     if (qw < 0) {
-      qw = 0.;
-      cerr << "x";
+    qw = 0.;
+    cerr << "x";
     }
-    Quaterniond rot(qw, quatXYZ.x(), quatXYZ.y(), quatXYZ.z());
-    rot.normalize();
+    Eigen::Quaterniond rot(qw, quatXYZ.x(), quatXYZ.y(), quatXYZ.z());
+    Eigen::Vector3d trans = transSampler.generateSample();
+    rot = gtQuat * rot;
+    trans = gtTrans + trans;
 
-    // Noise to translation
-    Vector3d trans = transSampler.generateSample();
+    Eigen::Isometry3d noisyMeasurement = (Eigen::Isometry3d) rot;
+    noisyMeasurement.translation() = trans;
 
-    // Transform point cloud and submap frame
-    Isometry3f poseDR(Isometry3f(Translation3f(trans.cast<float>())) *
-                      Isometry3f(rot.cast<float>()));
+    // Transform submap_i pcl and tf
+    pcl::transformPointCloud(submap.submap_pcl_, submap.submap_pcl_,
+                             (noisyMeasurement.cast<float>() * submap.submap_tf_.inverse()).matrix());
 
-    pcl::transformPointCloud(submap.submap_pcl_, submap.submap_pcl_, poseDR.matrix());
-    submap.submap_tf_ = poseDR * submap.submap_tf_;
+    submap.submap_tf_ = noisyMeasurement.cast<float>();
 }
 
-void additiveNoiseToSubmap(GaussianGen& transSampler,
-                           GaussianGen& rotSampler,
-                           SubmapObj& submap_i,
-                           SubmapObj& submap_i_1){
+void addNoiseToMap(GaussianGen& transSampler,
+                   GaussianGen& rotSampler,
+                   SubmapsVec& submap_set){
 
-    Vector3f euler_i = submap_i.submap_tf_.linear().eulerAngles(0,1,2);
-    float roll = 0, pitch = 0, yaw = /*euler_i(0) +*/ 0.5;
-    Matrix3f m;
-    m = AngleAxisf(roll, Vector3f::UnitX())
-        * AngleAxisf(pitch, Vector3f::UnitY())
-        * AngleAxisf(yaw, Vector3f::UnitZ());
-
-    Eigen::Vector3f rel_trans = submap_i.submap_tf_.translation() - submap_i_1.submap_tf_.translation();
-    rel_trans.z() = 0;  // Fix Z coordinate
-
-    Eigen::Vector3f p_i = submap_i_1.submap_tf_.translation() + m * rel_trans;
-
-    // Transform point cloud and submap frame
-    Vector3f rel = m * rel_trans - (rel_trans);
-
-//    Isometry3f drift(Isometry3f(Translation3f(rel))*
-//                     Isometry3f((m).matrix()));
-
-    pcl::transformPointCloud(submap_i.submap_pcl_, submap_i.submap_pcl_,
-                             (Isometry3f(Translation3f(rel))).matrix());
-
-    submap_i.submap_tf_.translation() = p_i;
-    submap_i.submap_tf_.linear() = (submap_i.submap_tf_.linear().matrix() * m).matrix();
+    // Noise for all the submaps
+    for (SubmapObj& submap_i: submap_set){
+        addNoiseToSubmap(transSampler, rotSampler, submap_i);
+    }
 }
 
 
-void addNoiseToGraph(GraphConstructor& graph_obj){
 
-    GaussianGen transSampler, rotSampler;
-    Matrix<double, 6,6> information = generateGaussianNoise(transSampler, rotSampler);
+void addNoiseToGraph(GaussianGen& transSampler,
+                     GaussianGen& rotSampler,
+                     GraphConstructor& graph_obj){
 
-    // noise for all the edges
+    // Noise for all the DR edges
     for (size_t i = 0; i < graph_obj.drEdges_.size(); ++i) {
       Eigen::Isometry3d meas_i = graph_obj.drMeas_.at(i);
       Eigen::Quaterniond gtQuat = (Eigen::Quaterniond)meas_i.linear();
       Eigen::Vector3d gtTrans = meas_i.translation();
 
-      double roll = 0, pitch = 0, yaw = /*euler_i(0) +*/ 0.5;
+      double roll = 0, pitch = 0, yaw = /*euler_i(0) +*/ 0.001;
       Matrix3d m;
       m = AngleAxisd(roll, Vector3d::UnitX())
           * AngleAxisd(pitch, Vector3d::UnitY())
@@ -134,10 +118,14 @@ void addNoiseToGraph(GraphConstructor& graph_obj){
         qw = 0.;
         cerr << "x";
       }
-      Eigen::Quaterniond rot(qw, quatXYZ.x(), quatXYZ.y(), quatXYZ.z());
-//      rot.normalize();
-      Eigen::Vector3d trans = transSampler.generateSample();
-      rot = gtQuat * rot;//Quaterniond(m);
+      Eigen::Vector3d trans;
+
+//      Eigen::Quaterniond rot(qw, quatXYZ.x(), quatXYZ.y(), quatXYZ.z());
+//      trans = transSampler.generateSample();
+      Eigen::Quaterniond rot(m);
+      trans.setZero();
+
+      rot = gtQuat * rot;
       trans = gtTrans + trans;
 
       Eigen::Isometry3d noisyMeasurement = (Eigen::Isometry3d) rot;
