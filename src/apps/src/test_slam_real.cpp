@@ -191,7 +191,7 @@ int main(int argc, char** argv){
     PointCloudT::Ptr cloud_ptr (new PointCloudT);
     pcl::UniformSampling<PointT> us_filter;
     us_filter.setInputCloud (cloud_ptr);
-    us_filter.setRadiusSearch(1);   // 1 for Borno, 2 for Antarctica
+    us_filter.setRadiusSearch(2);   // 1 for Borno, 2 for Antarctica
     pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor_filter;
     sor_filter.setMeanK (100);
     sor_filter.setStddevMulThresh(2);
