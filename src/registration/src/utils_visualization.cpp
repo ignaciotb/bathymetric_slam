@@ -80,9 +80,9 @@ void SubmapsVisualizer::setVisualizer(SubmapsVec& submaps_set, int num){
 
 void SubmapsVisualizer::updateVisualizer(const SubmapsVec& submaps_set){
 
-    viewer_.removeAllPointClouds(vp2_);
-    viewer_.removeAllCoordinateSystems(vp2_);
-    viewer_.addCoordinateSystem(5.0, "reference_frame", vp2_);
+    viewer_.removeAllPointClouds(vp1_);
+    viewer_.removeAllCoordinateSystems(vp1_);
+    viewer_.addCoordinateSystem(5.0, "reference_frame", vp1_);
 
     // Update pointclouds
     unsigned int i = 0;
@@ -90,8 +90,8 @@ void SubmapsVisualizer::updateVisualizer(const SubmapsVec& submaps_set){
     for(const SubmapObj& submap: submaps_set){
         submap_ptr.reset(new PointCloudT(submap.submap_pcl_));
         PointCloudColorHandlerCustom<PointT> cloud_color(submap_ptr, submap.colors_[0], submap.colors_[1], submap.colors_[2]);
-        viewer_.addPointCloud(submap_ptr, cloud_color, "cloud_" + std::to_string(i), vp2_);
-        viewer_.addCoordinateSystem(3.0, submap.submap_tf_, "cloud_" + std::to_string(i), vp2_);
+        viewer_.addPointCloud(submap_ptr, cloud_color, "cloud_" + std::to_string(i), vp1_);
+        viewer_.addCoordinateSystem(3.0, submap.submap_tf_, "cloud_" + std::to_string(i), vp1_);
         i++;
     }
     viewer_.spinOnce();
@@ -100,10 +100,10 @@ void SubmapsVisualizer::updateVisualizer(const SubmapsVec& submaps_set){
 void SubmapsVisualizer::plotPoseGraphG2O(const GraphConstructor& graph, const SubmapsVec& submaps_set){
 
     // Clean initial graph
-    viewer_.removeAllPointClouds(vp2_);
-    viewer_.removeAllCoordinateSystems(vp2_);
-    viewer_.removeAllShapes(vp2_);
-    viewer_.addCoordinateSystem(5.0, "reference_frame", vp2_);
+    viewer_.removeAllPointClouds(vp1_);
+    viewer_.removeAllCoordinateSystems(vp1_);
+    viewer_.removeAllShapes(vp1_);
+    viewer_.addCoordinateSystem(5.0, "reference_frame", vp1_);
 
     // Update pointclouds
     unsigned int i = 0;
@@ -111,8 +111,8 @@ void SubmapsVisualizer::plotPoseGraphG2O(const GraphConstructor& graph, const Su
     for(const SubmapObj& submap: submaps_set){
         submap_ptr.reset(new PointCloudT(submap.submap_pcl_));
         PointCloudColorHandlerCustom<PointT> cloud_color(submap_ptr, submap.colors_[0], submap.colors_[1], submap.colors_[2]);
-        viewer_.addPointCloud(submap_ptr, cloud_color, "cloud_" + std::to_string(i), vp2_);
-        viewer_.addCoordinateSystem(3.0, submap.submap_tf_, "cloud_" + std::to_string(i), vp2_);
+        viewer_.addPointCloud(submap_ptr, cloud_color, "cloud_" + std::to_string(i), vp1_);
+        viewer_.addCoordinateSystem(3.0, submap.submap_tf_, "cloud_" + std::to_string(i), vp1_);
         i++;
     }
 
@@ -125,7 +125,7 @@ void SubmapsVisualizer::plotPoseGraphG2O(const GraphConstructor& graph, const Su
         SubmapObj submap_to = submaps_set.at(j);
         Eigen::Vector3d to_ps = submap_to.submap_tf_.translation().cast<double>();
         viewer_.addArrow(PointT(from_ps[0],from_ps[1],from_ps[2]), PointT(to_ps[0],to_ps[1],to_ps[2]),
-                dr_color[0], dr_color[1], dr_color[2], false, "final_dr_edge_" + std::to_string(j), vp2_);
+                dr_color[0], dr_color[1], dr_color[2], false, "final_dr_edge_" + std::to_string(j), vp1_);
     }
 
     // Plot LC edges
@@ -137,7 +137,7 @@ void SubmapsVisualizer::plotPoseGraphG2O(const GraphConstructor& graph, const Su
         Eigen::Vector3d from_ps = from->estimate().translation();
         Eigen::Vector3d to_ps = to->estimate().translation();
         viewer_.addArrow(PointT(from_ps[0],from_ps[1],from_ps[2]), PointT(to_ps[0],to_ps[1],to_ps[2]),
-                lc_color[0], lc_color[1], lc_color[2], false, "lc_edge_" + std::to_string(i), vp2_);
+                lc_color[0], lc_color[1], lc_color[2], false, "lc_edge_" + std::to_string(i), vp1_);
         i++;
     }
 
@@ -147,10 +147,10 @@ void SubmapsVisualizer::plotPoseGraphG2O(const GraphConstructor& graph, const Su
 void SubmapsVisualizer::plotPoseGraphCeres(SubmapsVec& submaps_set){
 
     // Clean initial graph
-    viewer_.removeAllPointClouds(vp2_);
-    viewer_.removeAllCoordinateSystems(vp2_);
-    viewer_.removeAllShapes(vp2_);
-    viewer_.addCoordinateSystem(5.0, "reference_frame", vp2_);
+    viewer_.removeAllPointClouds(vp1_);
+    viewer_.removeAllCoordinateSystems(vp1_);
+    viewer_.removeAllShapes(vp1_);
+    viewer_.addCoordinateSystem(5.0, "reference_frame", vp1_);
 
     // Update pointclouds
     unsigned int i = 0;
@@ -158,8 +158,8 @@ void SubmapsVisualizer::plotPoseGraphCeres(SubmapsVec& submaps_set){
     for(const SubmapObj& submap: submaps_set){
         submap_ptr.reset(new PointCloudT(submap.submap_pcl_));
         PointCloudColorHandlerCustom<PointT> cloud_color(submap_ptr, submap.colors_[0], submap.colors_[1], submap.colors_[2]);
-        viewer_.addPointCloud(submap_ptr, cloud_color, "cloud_" + std::to_string(i), vp2_);
-        viewer_.addCoordinateSystem(3.0, submap.submap_tf_, "cloud_" + std::to_string(i), vp2_);
+        viewer_.addPointCloud(submap_ptr, cloud_color, "cloud_" + std::to_string(i), vp1_);
+        viewer_.addCoordinateSystem(3.0, submap.submap_tf_, "cloud_" + std::to_string(i), vp1_);
         i++;
     }
 
@@ -171,7 +171,7 @@ void SubmapsVisualizer::plotPoseGraphCeres(SubmapsVec& submaps_set){
         SubmapObj submap_to = submaps_set.at(j);
         Eigen::Vector3d to_ps = submap_to.submap_tf_.translation().cast<double>();
         viewer_.addArrow(PointT(from_ps[0],from_ps[1],from_ps[2]), PointT(to_ps[0],to_ps[1],to_ps[2]),
-                dr_color[0], dr_color[1], dr_color[2], false, "final_dr_edge_" + std::to_string(j), vp2_);
+                dr_color[0], dr_color[1], dr_color[2], false, "final_dr_edge_" + std::to_string(j), vp1_);
     }
 
     viewer_.spinOnce();

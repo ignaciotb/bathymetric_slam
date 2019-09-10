@@ -100,13 +100,18 @@ void addNoiseToGraph(GaussianGen& transSampler,
                      GaussianGen& rotSampler,
                      GraphConstructor& graph_obj){
 
+//    std::random_device rd{};
+//    std::mt19937 gen{rd()};
+//    std::normal_distribution<> d{0,0.01};
+
     // Noise for all the DR edges
     for (size_t i = 0; i < graph_obj.drEdges_.size(); ++i) {
       Eigen::Isometry3d meas_i = graph_obj.drMeas_.at(i);
       Eigen::Quaterniond gtQuat = (Eigen::Quaterniond)meas_i.linear();
       Eigen::Vector3d gtTrans = meas_i.translation();
 
-      double roll = 0, pitch = 0, yaw = /*euler_i(0) +*/ 0.001;
+      // Fixed bias in yaw
+      double roll = 0, pitch = 0, yaw = 0.001 /*d(gen)*/;
       Matrix3d m;
       m = AngleAxisd(roll, Vector3d::UnitX())
           * AngleAxisd(pitch, Vector3d::UnitY())

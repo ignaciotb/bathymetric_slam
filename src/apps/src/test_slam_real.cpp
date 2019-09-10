@@ -33,7 +33,7 @@
 #include <boost/algorithm/string.hpp>
 
 #define INTERACTIVE 0
-#define VISUAL 0
+#define VISUAL 1
 
 using namespace Eigen;
 using namespace std;
@@ -191,7 +191,7 @@ int main(int argc, char** argv){
     PointCloudT::Ptr cloud_ptr (new PointCloudT);
     pcl::UniformSampling<PointT> us_filter;
     us_filter.setInputCloud (cloud_ptr);
-    us_filter.setRadiusSearch(1);   // 1 for Borno, 2 for Antarctica
+    us_filter.setRadiusSearch(2);   // 1 for Borno, 2 for Antarctica
     pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor_filter;
     sor_filter.setMeanK (100);
     sor_filter.setStddevMulThresh(2);
@@ -219,7 +219,7 @@ int main(int argc, char** argv){
     PCLVisualizer viewer ("Submaps viewer");
     viewer.loadCameraParameters("Antarctica7");
     SubmapsVisualizer* visualizer = new SubmapsVisualizer(viewer);
-    visualizer->setVisualizer(submaps_gt, 2);
+    visualizer->setVisualizer(submaps_gt, 1);
     while(!viewer.wasStopped ()){
         viewer.spinOnce ();
     }

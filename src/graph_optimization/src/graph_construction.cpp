@@ -80,7 +80,7 @@ void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapOb
         double z = cov_matrix.normalized().inverse().cast<double>().row(2)(2);
         info_diag << 10000.0, 10000.0, 1000.0;
 //        info_diag_trans << z, z, 10000.0;
-        info_diag_trans << 1, 1, 10000.0;
+        info_diag_trans << 0.1, 0.1, 10000.0;
         information.block<3,3>(0,0) = info_diag_trans.asDiagonal();
         information.block<3,3>(3,3) = info_diag.asDiagonal();
     }
