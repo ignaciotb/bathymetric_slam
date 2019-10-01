@@ -10,11 +10,11 @@
  */
 #include <boost/filesystem.hpp>
 
-#include "submaps_tools/cxxopts.hpp"
 
 #include "registration/gicp_reg.hpp"
 #include "registration/utils_visualization.hpp"
 
+#include "submaps_tools/cxxopts.hpp"
 #include "submaps_tools/submaps.hpp"
 
 #include "graph_optimization/utils_g2o.hpp"
