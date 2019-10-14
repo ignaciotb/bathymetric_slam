@@ -58,6 +58,14 @@ public:
 
     Eigen::Matrix<double, 6, 6> createDRWeights();
 
+    template <class Archive>
+    void serialize( Archive & ar )
+    {
+        ar(CEREAL_NVP(submap_id_), CEREAL_NVP(swath_id_),/* CEREAL_NVP(submap_pcl_),*/ CEREAL_NVP(overlaps_idx_),
+           CEREAL_NVP(colors_), /*CEREAL_NVP(submap_tf_),*/ CEREAL_NVP(submap_info_),
+           CEREAL_NVP(auv_tracks_));
+    }
+
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 

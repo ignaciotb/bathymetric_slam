@@ -32,6 +32,8 @@
 
 #include <boost/algorithm/string.hpp>
 
+#include <cereal/archives/binary.hpp>
+
 #define INTERACTIVE 0
 #define VISUAL 1
 
@@ -260,6 +262,13 @@ int main(int argc, char** argv){
     google::InitGoogleLogging(argv[0]);
     ceres::optimizer::MapOfPoses poses = ceres::optimizer::ceresSolver(outFilename, graph_obj->drEdges_.size());
     ceres::optimizer::updateSubmapsCeres(poses, submaps_reg);
+
+    std::ofstream os("hola.txt", std::ofstream::binary);
+    {
+        cereal::BinaryOutputArchive oarchive(os); // Create an output archive
+        oarchive(submaps_reg.at(0), submaps_reg.at(1)); // Write the data to the archive
+        os.close();
+    } // archive goes out of scope, ensuring all contents are flushed
 
 #if VISUAL == 1
     // Visualize Ceres output
