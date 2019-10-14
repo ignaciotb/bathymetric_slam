@@ -373,3 +373,74 @@ bool checkSubmapSize(const SubmapObj& submap_i){
     }
     return reject;
 }
+
+std::pair<Eigen::Matrix2d, Eigen::Matrix2d> readCovMatrix(const std::string& file_name){
+
+    std::string line;
+    Eigen::Matrix2d prior, posterior;
+    prior.setZero(); posterior.setZero();
+
+    std::ifstream input;
+    input.open(file_name);
+    if(input.fail()) {
+        cout << "ERROR: Cannot open the file..." << endl;
+        exit(0);
+    }
+
+    int i = 0;
+    while (std::getline(input, line)){
+        std::istringstream iss(line);
+        double a, b;
+        if (!(iss >> a >> b)) { break; } // error or end of file
+        if(i<2){prior.row(i) = Eigen::Vector2d(a, b).transpose();}
+        else{posterior.row(i-2) = Eigen::Vector2d(a, b).transpose();}
+        i++;
+    }
+    return std::make_pair(prior, posterior);
+}
+
+covs readCovsFromFiles(boost::filesystem::path folder){
+
+    typedef vector<boost::filesystem::path> v_path;
+    v_path v;
+    copy(boost::filesystem::directory_iterator(folder),
+         boost::filesystem::directory_iterator(), back_inserter(v));
+    sort(v.begin(), v.end());
+
+    // Read covs generated from NN
+    std::vector<std::string> files;
+    for (v_path::const_iterator it(v.begin()), it_end(v.end()); it != it_end; ++it) {
+        if (boost::filesystem::is_directory(*it)) {
+            continue;
+        }
+
+        if (boost::filesystem::extension(*it) != ".txt") {
+            continue;
+        }
+        files.push_back(it->string());
+    }
+
+    covs covs_lc(files.size());
+    for (unsigned int file =  0; file < files.size(); file++) {
+        std::regex regex("\\_");
+        std::vector<std::string> out(
+                        std::sregex_token_iterator(files.at(file).begin(), files.at(file).end(), regex, -1),
+                        std::sregex_token_iterator());
+
+        std::regex regex2("\\.");
+        std::vector<std::string> out2(
+                        std::sregex_token_iterator(out.back().begin(), out.back().end(), regex2, -1),
+                        std::sregex_token_iterator());
+
+        Eigen::Matrix2d prior, posterior;
+        std::tie(prior, posterior) = readCovMatrix(files.at(file));
+        covs_lc.at(std::stoi(out2.front())) = posterior;
+
+        out.clear();
+        out2.clear();
+    }
+
+    return covs_lc;
+}
+
+

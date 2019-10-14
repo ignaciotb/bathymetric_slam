@@ -20,6 +20,7 @@
 #include "graph_optimization/read_g2o.h"
 #include "graph_optimization/pose_graph_3d_error_term.h"
 #include "graph_optimization/types.h"
+#include "graph_optimization/graph_construction.hpp"
 
 #include "submaps_tools/submaps.hpp"
 
@@ -44,6 +45,8 @@ bool OutputPoses(const std::string& filename, const MapOfPoses& poses);
 MapOfPoses ceresSolver(const std::string& outFilename, const int drConstraints);
 
 void updateSubmapsCeres(const MapOfPoses &poses, SubmapsVec& submaps_set);
+
+void saveOriginalTrajectory(SubmapsVec& submaps_set);
 
 }
 }

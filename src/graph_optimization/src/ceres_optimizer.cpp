@@ -253,5 +253,31 @@ void updateSubmapsCeres(const ceres::optimizer::MapOfPoses& poses, SubmapsVec& s
 }
 
 
+void saveOriginalTrajectory(SubmapsVec& submaps_set){
+
+    covs covs_lc;
+    GraphConstructor* graph = new GraphConstructor(covs_lc);
+
+    for(SubmapObj& submap_i: submaps_set){
+        graph->createNewVertex(submap_i);
+
+        // Create DR edge i and store (skip submap 0)
+        if(submap_i.submap_id_ != 0 ){
+            graph->createDREdge(submap_i);
+        }
+    }
+
+    string outFilename = "poses_original.g2o";
+    graph->saveG2OFile(outFilename);
+    ceres::optimizer::MapOfPoses poses;
+    ceres::optimizer::VectorOfConstraints constraints;
+    CHECK(ceres::optimizer::ReadG2oFile(outFilename, &poses, &constraints))
+        << "Error reading the file: " << outFilename;
+
+    CHECK(ceres::optimizer::OutputPoses("poses_original.txt", poses))
+        << "Error outputting to poses_original.txt";
+}
+
+
 }  // namespace optimizer
 }  // namespace ceres
