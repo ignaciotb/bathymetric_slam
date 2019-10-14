@@ -357,11 +357,11 @@ int main(int argc, char** argv){
     // Optimize graph
     google::InitGoogleLogging(argv[0]);
     ceres::optimizer::MapOfPoses poses = ceres::optimizer::ceresSolver(outFilename, graph_obj->drEdges_.size());
-    ceres::optimizer::updateSubmapsCeres(poses, submaps_gt);
+    ceres::optimizer::updateSubmapsCeres(poses, submaps_reg);
 
 #if VISUAL == 1
     // Visualize Ceres output
-    visualizer->plotPoseGraphCeres(submaps_gt);
+    visualizer->plotPoseGraphCeres(submaps_reg);
     while(!viewer.wasStopped ()){
         viewer.spinOnce ();
     }
@@ -370,8 +370,8 @@ int main(int argc, char** argv){
 #endif
 
     // Benchmark Optimized
-    PointsT opt_map = pclToMatrixSubmap(submaps_gt);
-    PointsT opt_track = trackToMatrixSubmap(submaps_gt);
+    PointsT opt_map = pclToMatrixSubmap(submaps_reg);
+    PointsT opt_track = trackToMatrixSubmap(submaps_reg);
     benchmark.add_benchmark(opt_map, opt_track, "optimized");
     benchmark.print_summary();
 

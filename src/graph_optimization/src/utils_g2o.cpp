@@ -23,9 +23,9 @@ Matrix<double, 6,6> generateGaussianNoise(GaussianGen& transSampler,
     std::vector<double> noiseRotation;
     noiseTranslation.push_back(3);
     noiseTranslation.push_back(3);
-    noiseTranslation.push_back(0.000000001);
-    noiseRotation.push_back(0.000000001);
-    noiseRotation.push_back(0.000000001);
+    noiseTranslation.push_back(0.001);
+    noiseRotation.push_back(0.0001);
+    noiseRotation.push_back(0.0001);
     noiseRotation.push_back(0.001);
 
     Eigen::Matrix3d transNoise = Eigen::Matrix3d::Zero();
@@ -45,14 +45,14 @@ Matrix<double, 6,6> generateGaussianNoise(GaussianGen& transSampler,
     transSampler.setDistribution(transNoise);
     rotSampler.setDistribution(rotNoise);
 
-    if (randomSeed) {
-      std::random_device r;
-      std::seed_seq seedSeq{r(), r(), r(), r(), r()};
-      vector<int> seeds(2);
-      seedSeq.generate(seeds.begin(), seeds.end());
-      transSampler.seed(seeds[0]);
-      rotSampler.seed(seeds[1]);
-    }
+//    if (randomSeed) {
+//      std::random_device r;
+//      std::seed_seq seedSeq{r(), r(), r(), r(), r()};
+//      vector<int> seeds(2);
+//      seedSeq.generate(seeds.begin(), seeds.end());
+//      transSampler.seed(seeds[0]);
+//      rotSampler.seed(seeds[1]);
+//    }
     return information;
 }
 
@@ -100,9 +100,9 @@ void addNoiseToGraph(GaussianGen& transSampler,
                      GaussianGen& rotSampler,
                      GraphConstructor& graph_obj){
 
-//    std::random_device rd{};
-//    std::mt19937 gen{rd()};
-//    std::normal_distribution<> d{0,0.01};
+    std::random_device rd{};
+    std::mt19937 gen{rd()};
+    std::normal_distribution<> d{0,0.01};
 
     // Noise for all the DR edges
     for (size_t i = 0; i < graph_obj.drEdges_.size(); ++i) {
@@ -111,7 +111,7 @@ void addNoiseToGraph(GaussianGen& transSampler,
       Eigen::Vector3d gtTrans = meas_i.translation();
 
       // Fixed bias in yaw
-      double roll = 0, pitch = 0, yaw = 0.001 /*d(gen)*/;
+      double roll = 0.0, pitch = 0.0, yaw = /*0.001*/ d(gen);
       Matrix3d m;
       m = AngleAxisd(roll, Vector3d::UnitX())
           * AngleAxisd(pitch, Vector3d::UnitY())
@@ -123,11 +123,11 @@ void addNoiseToGraph(GaussianGen& transSampler,
         qw = 0.;
         cerr << "x";
       }
-      Eigen::Vector3d trans;
-
 //      Eigen::Quaterniond rot(qw, quatXYZ.x(), quatXYZ.y(), quatXYZ.z());
-//      trans = transSampler.generateSample();
       Eigen::Quaterniond rot(m);
+
+      Eigen::Vector3d trans;
+//      trans = transSampler.generateSample();
       trans.setZero();
 
       rot = gtQuat * rot;
