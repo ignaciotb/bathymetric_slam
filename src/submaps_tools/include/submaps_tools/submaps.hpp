@@ -58,16 +58,31 @@ public:
 
     Eigen::Matrix<double, 6, 6> createDRWeights();
 
-    template <class Archive>
-    void serialize( Archive & ar )
-    {
-        ar(CEREAL_NVP(submap_id_), CEREAL_NVP(swath_id_),/* CEREAL_NVP(submap_pcl_),*/ CEREAL_NVP(overlaps_idx_),
-           CEREAL_NVP(colors_), /*CEREAL_NVP(submap_tf_),*/ CEREAL_NVP(submap_info_),
-           CEREAL_NVP(auv_tracks_));
-    }
-
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
+
+template<class Archive>
+void save(Archive & archive,
+          SubmapObj const & m)
+{
+    Eigen::MatrixXf points = m.submap_pcl_.getMatrixXfMap(3,4,0).transpose();
+    archive(CEREAL_NVP(m.submap_id_), CEREAL_NVP(m.swath_id_), CEREAL_NVP(points),
+        CEREAL_NVP(m.overlaps_idx_), CEREAL_NVP(m.colors_), CEREAL_NVP(m.submap_tf_.matrix()), CEREAL_NVP(m.submap_info_),
+        CEREAL_NVP(m.auv_tracks_));
+}
+
+template<class Archive>
+void load(Archive & archive,
+          SubmapObj & m)
+{
+    Eigen::MatrixXf points;
+    archive(CEREAL_NVP(m.submap_id_), CEREAL_NVP(m.swath_id_), CEREAL_NVP(points),
+        CEREAL_NVP(m.overlaps_idx_), CEREAL_NVP(m.colors_), CEREAL_NVP(m.submap_tf_.matrix()), CEREAL_NVP(m.submap_info_),
+        CEREAL_NVP(m.auv_tracks_));
+    for(unsigned int i=0; i<points.rows(); i++){
+        m.submap_pcl_.points.push_back(PointT(points.row(i)[0], points.row(i)[1], points.row(i)[2]));
+    }
+}
 
 typedef std::vector<SubmapObj, Eigen::aligned_allocator<SubmapObj>> SubmapsVec;
 
@@ -76,10 +91,6 @@ void readSubmapFile(const string submap_str, PointCloudT::Ptr submap_pcl);
 std::vector<std::string> checkFilesInDir(DIR *dir);
 
 std::vector<SubmapObj, Eigen::aligned_allocator<SubmapObj> > readSubmapsInDir(const string& dir_path);
-
-PointsT pclToMatrixSubmap(const SubmapsVec& submaps_set);
-
-PointsT trackToMatrixSubmap(const SubmapsVec& submaps_set);
 
 Array3f computeInfoInSubmap(const SubmapObj& submap);
 
@@ -100,6 +111,10 @@ bool checkSubmapSize(const SubmapObj& submap_i);
 template <typename T> int sgn(T val) {
     return (T(0) < val) - (val < T(0));
 }
+
+PointsT pclToMatrixSubmap(const SubmapsVec& submaps_set);
+
+PointsT trackToMatrixSubmap(const SubmapsVec& submaps_set);
 
 std::pair<Eigen::Matrix2d, Eigen::Matrix2d> readCovMatrix(const std::string& file_name);
 

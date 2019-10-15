@@ -263,12 +263,19 @@ int main(int argc, char** argv){
     ceres::optimizer::MapOfPoses poses = ceres::optimizer::ceresSolver(outFilename, graph_obj->drEdges_.size());
     ceres::optimizer::updateSubmapsCeres(poses, submaps_reg);
 
-    std::ofstream os("hola.txt", std::ofstream::binary);
+    std::ofstream os("submaps.cereal", std::ofstream::binary);
     {
         cereal::BinaryOutputArchive oarchive(os); // Create an output archive
-        oarchive(submaps_reg.at(0), submaps_reg.at(1)); // Write the data to the archive
+        oarchive(submaps_reg); // Write the data to the archive
         os.close();
-    } // archive goes out of scope, ensuring all contents are flushed
+    }
+
+    std::ifstream is("submaps.cereal", std::ifstream::binary);
+    {
+      cereal::BinaryInputArchive iarchive(is); // Create an input archive
+      iarchive(submaps_reg); // Read the data from the archive
+    }
+
 
 #if VISUAL == 1
     // Visualize Ceres output
