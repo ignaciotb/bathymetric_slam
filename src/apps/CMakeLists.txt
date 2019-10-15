@@ -5,15 +5,15 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/)
 include_directories(include)
 
 ## TESTS
-add_executable(test_slam_simulation
+add_executable(bathy_slam_sim
         src/test_graph_optimization.cpp
 )
 
-add_executable(test_slam_real
+add_executable(bathy_slam_real
        src/test_slam_real.cpp
 )
 
-target_link_libraries(test_slam_simulation
+target_link_libraries(bathy_slam_sim
     gicp_registration
     utils_g2o
     submaps_tools
@@ -24,7 +24,7 @@ target_link_libraries(test_slam_simulation
     benchmark
 )
 
-target_link_libraries(test_slam_real
+target_link_libraries(bathy_slam_real
    gicp_registration
    utils_g2o
    submaps_tools
