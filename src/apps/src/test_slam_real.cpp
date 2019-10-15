@@ -8,18 +8,19 @@
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <boost/filesystem.hpp>
 
 #include <fstream>
 #include <sstream>
 #include <iostream>
 #include <algorithm>
-
-#include "submaps_tools/cxxopts.hpp"
+#include <boost/algorithm/string.hpp>
+#include <boost/filesystem.hpp>
+#include <cereal/archives/binary.hpp>
 
 #include "data_tools/std_data.h"
 #include "data_tools/benchmark.h"
 
+#include "submaps_tools/cxxopts.hpp"
 #include "submaps_tools/submaps.hpp"
 
 #include "registration/utils_visualization.hpp"
@@ -30,10 +31,6 @@
 #include "graph_optimization/ceres_optimizer.hpp"
 #include "graph_optimization/read_g2o.h"
 
-#include <boost/algorithm/string.hpp>
-
-#include <cereal/archives/binary.hpp>
-
 #define INTERACTIVE 0
 #define VISUAL 1
 
@@ -41,48 +38,46 @@ using namespace Eigen;
 using namespace std;
 using namespace g2o;
 
-/// Read loop closures from external file
-std::vector<std::vector<int> > readGTLoopClosures(string& fileName, int submaps_nb){
-
-    std::ifstream infile(fileName);
-    std::vector<std::vector<int> > overlaps(static_cast<unsigned long>(submaps_nb));
-
-    std::string line;
-    while(std::getline(infile, line)){
-        vector<string> result;
-        boost::split(result, line, boost::is_any_of(" "));
-        vector<int> result_d(result.size());
-        std::transform(result.begin(), result.end(), result_d.begin(), [](const std::string& val){
-            return std::stoi(val);
-        });
-        overlaps.at(result_d[0]).insert(overlaps.at(result_d[0]).end(), result_d.begin()+1, result_d.end());
-    }
-
-    return overlaps;
-}
-
 int main(int argc, char** argv){
 
-    // Read submaps from folder
-    string path_str;
-    std::string folder_str;
+    // Inputs
+    std::string folder_str, path_str, output_str, original;
     cxxopts::Options options("MyProgram", "One line description of MyProgram");
     options.add_options()
         ("help", "Print help")
-        ("folder", "Input covs folder", cxxopts::value(folder_str))
-        ("file", "Input ceres file", cxxopts::value(path_str));
+        ("covs_folder", "Input covs folder", cxxopts::value(folder_str))
+        ("output_cereal", "Output graph cereal", cxxopts::value(output_str))
+        ("original", "Disturb original trajectory", cxxopts::value(original))
+        ("slam_cereal", "Input ceres file", cxxopts::value(path_str));
 
     auto result = options.parse(argc, argv);
     if (result.count("help")) {
         cout << options.help({ "", "Group" }) << endl;
         exit(0);
     }
-    boost::filesystem::path submaps_path(path_str);
-    std_data::pt_submaps ss = std_data::read_data<std_data::pt_submaps>(submaps_path);
-    string loopsFilename = "loop_closures.txt";
+    if(output_str.empty()){
+        output_str = "output_cereal.cereal";
+    }
+    boost::filesystem::path output_path(output_str);
+    string loopsFilename = "loop_closures.txt"; // LCs list output file
+    string outFilename = "corrupted_graph.g2o";   // G2O output file
 
-    // Parse submaps from cereal
-    SubmapsVec submaps_gt = parseSubmapsAUVlib(ss);
+    // Parse submaps from cereal file
+    SubmapsVec submaps_gt;
+    boost::filesystem::path submaps_path(path_str);
+    if(original == "yes"){
+        std::cout << "Reading original data" << std::endl;
+        std_data::pt_submaps ss = std_data::read_data<std_data::pt_submaps>(submaps_path);
+        submaps_gt = parseSubmapsAUVlib(ss);
+    }
+    else{
+        std::cout << "Reading pre-processed submaps" << std::endl;
+        std::ifstream is(submaps_path.string(), std::ifstream::binary);
+        {
+          cereal::BinaryInputArchive iarchive(is);
+          iarchive(submaps_gt);
+        }
+    }
 
     // Read training data files from folder
     covs covs_lc;
@@ -115,8 +110,7 @@ int main(int argc, char** argv){
     PointsT gt_map = pclToMatrixSubmap(submaps_gt);
     PointsT gt_track = trackToMatrixSubmap(submaps_gt);
     benchmark.add_ground_truth(gt_map, gt_track);
-    // Save original trajectory
-    ceres::optimizer::saveOriginalTrajectory(submaps_gt);
+    ceres::optimizer::saveOriginalTrajectory(submaps_gt); // Save original trajectory to txt
 
     // Visualization
 #if VISUAL == 1
@@ -136,7 +130,6 @@ int main(int argc, char** argv){
 
     // Graph constructor
     GraphConstructor* graph_obj = new GraphConstructor(covs_lc);
-
     ofstream fileOutputStream;
     fileOutputStream.open(loopsFilename, std::ofstream::out);
 
@@ -144,16 +137,9 @@ int main(int argc, char** argv){
     GaussianGen transSampler, rotSampler;
     Matrix<double, 6,6> information = generateGaussianNoise(transSampler, rotSampler);
 
-    // Benchmar noisy
-//    addNoiseToMap(transSampler, rotSampler, submaps_gt);
-//    PointsT init_map = pclToMatrixSubmap(submaps_gt);
-//    PointsT init_track = trackToMatrixSubmap(submaps_gt);
-//    benchmark.add_benchmark(init_map, init_track, "corrupted");
-
     SubmapObj submap_trg;
-    SubmapsVec submaps_prev;
+    SubmapsVec submaps_prev, submaps_reg;
     double info_thres = 0.1;
-    SubmapsVec submaps_reg;
     for(SubmapObj& submap_i: submaps_gt){
         std::cout << " ----------- Submap " << submap_i.submap_id_ << ", swath "
                   << submap_i.swath_id_ << " ------------"<< std::endl;
@@ -161,16 +147,13 @@ int main(int argc, char** argv){
         // Look for loop closures
         for(SubmapObj& submap_k: submaps_reg){
             // Don't look for overlaps between submaps of the same swath or the prev submap
-            if(/*submap_k.swath_id_ != submap_i.swath_id_ ||*/
-                    submap_k.submap_id_ != submap_i.submap_id_ - 1){
+            if(submap_k.submap_id_ != submap_i.submap_id_ - 1){
                 submaps_prev.push_back(submap_k);
             }
         }
         submap_i.findOverlaps(submaps_prev);
         submaps_prev.clear();
-
-        // Add submap_i to registered set (just for visualization here)
-        submaps_reg.push_back(submap_i);
+        submaps_reg.push_back(submap_i); // Add submap_i to registered set (just for visualization here)
 
 #if INTERACTIVE == 1
         // Update visualizer
@@ -192,6 +175,7 @@ int main(int argc, char** argv){
         // If potential loop closure detected
         SubmapObj submap_final = submap_i;
         if(!submap_i.overlaps_idx_.empty()){
+            // Save loop closure to txt
             if(fileOutputStream.is_open()){
                 fileOutputStream << submap_i.submap_id_;
                 for(unsigned int j=0; j<submap_i.overlaps_idx_.size(); j++){
@@ -249,8 +233,6 @@ int main(int argc, char** argv){
 #endif
 
     // Save graph to output g2o file (optimization can be run with G2O)
-    string outFilename = "graph.g2o";
-    // string outFilename = "/home/torroba/workspace/g2o/bin/g2o.g2o";
     graph_obj->saveG2OFile(outFilename);
 
     // Benchmar corrupted
@@ -258,24 +240,17 @@ int main(int argc, char** argv){
     PointsT reg_track = trackToMatrixSubmap(submaps_reg);
     benchmark.add_benchmark(reg_map, reg_track, "corrupted");
 
-    // Optimize graph
+    // Optimize graph and save to cereal
     google::InitGoogleLogging(argv[0]);
     ceres::optimizer::MapOfPoses poses = ceres::optimizer::ceresSolver(outFilename, graph_obj->drEdges_.size());
     ceres::optimizer::updateSubmapsCeres(poses, submaps_reg);
-
-    std::ofstream os("submaps.cereal", std::ofstream::binary);
+    std::cout << "Output cereal: " << boost::filesystem::basename(output_path) << std::endl;
+    std::ofstream os(boost::filesystem::basename(output_path) + ".cereal", std::ofstream::binary);
     {
-        cereal::BinaryOutputArchive oarchive(os); // Create an output archive
-        oarchive(submaps_reg); // Write the data to the archive
+        cereal::BinaryOutputArchive oarchive(os);
+        oarchive(submaps_reg);
         os.close();
     }
-
-    std::ifstream is("submaps.cereal", std::ifstream::binary);
-    {
-      cereal::BinaryInputArchive iarchive(is); // Create an input archive
-      iarchive(submaps_reg); // Read the data from the archive
-    }
-
 
 #if VISUAL == 1
     // Visualize Ceres output

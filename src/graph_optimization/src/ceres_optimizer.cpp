@@ -267,7 +267,7 @@ void saveOriginalTrajectory(SubmapsVec& submaps_set){
         }
     }
 
-    string outFilename = "poses_original.g2o";
+    string outFilename = "original_graph.g2o";
     graph->saveG2OFile(outFilename);
     ceres::optimizer::MapOfPoses poses;
     ceres::optimizer::VectorOfConstraints constraints;

@@ -120,4 +120,6 @@ std::pair<Eigen::Matrix2d, Eigen::Matrix2d> readCovMatrix(const std::string& fil
 
 covs readCovsFromFiles(boost::filesystem::path folder);
 
+std::vector<std::vector<int> > readGTLoopClosures(string& fileName, int submaps_nb);
+
 #endif // SUBMAPS_HPP

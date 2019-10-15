@@ -444,3 +444,22 @@ covs readCovsFromFiles(boost::filesystem::path folder){
 }
 
 
+/// Read loop closures from external file
+std::vector<std::vector<int> > readGTLoopClosures(string& fileName, int submaps_nb){
+
+    std::ifstream infile(fileName);
+    std::vector<std::vector<int> > overlaps(static_cast<unsigned long>(submaps_nb));
+
+    std::string line;
+    while(std::getline(infile, line)){
+        vector<string> result;
+        boost::split(result, line, boost::is_any_of(" "));
+        vector<int> result_d(result.size());
+        std::transform(result.begin(), result.end(), result_d.begin(), [](const std::string& val){
+            return std::stoi(val);
+        });
+        overlaps.at(result_d[0]).insert(overlaps.at(result_d[0]).end(), result_d.begin()+1, result_d.end());
+    }
+
+    return overlaps;
+}
