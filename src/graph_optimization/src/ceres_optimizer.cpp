@@ -174,7 +174,7 @@ bool SolveOptimizationProblem(ceres::Problem* problem) {
 
     ceres::Solver::Summary summary;
     ceres::Solve(options, problem, &summary);
-    std::cout << summary.FullReport() << '\n';
+//    std::cout << summary.FullReport() << '\n';
 
     return summary.IsSolutionUsable();
 }
@@ -267,7 +267,7 @@ void saveOriginalTrajectory(SubmapsVec& submaps_set){
         }
     }
 
-    string outFilename = "original_graph.g2o";
+    string outFilename = "graph_original.g2o";
     graph->saveG2OFile(outFilename);
     ceres::optimizer::MapOfPoses poses;
     ceres::optimizer::VectorOfConstraints constraints;

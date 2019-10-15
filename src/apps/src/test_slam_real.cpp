@@ -32,7 +32,7 @@
 #include "graph_optimization/read_g2o.h"
 
 #define INTERACTIVE 0
-#define VISUAL 1
+#define VISUAL 0
 
 using namespace Eigen;
 using namespace std;
@@ -60,42 +60,36 @@ int main(int argc, char** argv){
     }
     boost::filesystem::path output_path(output_str);
     string loopsFilename = "loop_closures.txt"; // LCs list output file
-    string outFilename = "corrupted_graph.g2o";   // G2O output file
+    string outFilename = "graph_corrupted.g2o";   // G2O output file
 
     // Parse submaps from cereal file
     SubmapsVec submaps_gt;
     boost::filesystem::path submaps_path(path_str);
+    std::cout << "Input data " << boost::filesystem::basename(submaps_path) << std::endl;
     if(original == "yes"){
-        std::cout << "Reading original data" << std::endl;
         std_data::pt_submaps ss = std_data::read_data<std_data::pt_submaps>(submaps_path);
         submaps_gt = parseSubmapsAUVlib(ss);
     }
     else{
-        std::cout << "Reading pre-processed submaps" << std::endl;
-        std::ifstream is(submaps_path.string(), std::ifstream::binary);
+        std::ifstream is(boost::filesystem::basename(submaps_path) + ".cereal", std::ifstream::binary);
         {
           cereal::BinaryInputArchive iarchive(is);
           iarchive(submaps_gt);
         }
     }
 
-    // Read training data files from folder
+    // Read training covs from folder
     covs covs_lc;
     boost::filesystem::path folder(folder_str);
     if(boost::filesystem::is_directory(folder)) {
         covs_lc = readCovsFromFiles(folder);
     }
 
-    // Parameters for downsampling and filtering of submaps
+    // Filtering of submaps
     PointCloudT::Ptr cloud_ptr (new PointCloudT);
     pcl::UniformSampling<PointT> us_filter;
     us_filter.setInputCloud (cloud_ptr);
     us_filter.setRadiusSearch(1);   // 1 for Borno, 2 for Antarctica
-    pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor_filter;
-    sor_filter.setMeanK (100);
-    sor_filter.setStddevMulThresh(2);
-
-    // Filter out useless maps manually
     for(SubmapObj& submap_i: submaps_gt){
 //        std::cout << "before " << submap_i.submap_pcl_.size() << std::endl;
         *cloud_ptr = submap_i.submap_pcl_;
