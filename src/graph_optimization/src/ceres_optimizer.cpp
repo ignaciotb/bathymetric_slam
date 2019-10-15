@@ -170,7 +170,7 @@ bool SolveOptimizationProblem(ceres::Problem* problem) {
     options.use_inner_iterations = false;
     options.minimizer_progress_to_stdout = true;
     options.num_threads =4;
-    options.eta = 1e-7;
+    options.eta = 1e-9;
 
     ceres::Solver::Summary summary;
     ceres::Solve(options, problem, &summary);

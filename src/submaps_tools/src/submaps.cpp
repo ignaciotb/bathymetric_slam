@@ -58,6 +58,7 @@ Eigen::Matrix<double, 6, 6> SubmapObj::createDRWeights(){
     information.block<3,3>(0,0) = transNoise.inverse();
     information.block<3,3>(3,3) = rotNoise.inverse();
 
+//    std::cout << information << std::endl;
     return information;
 }
 
@@ -318,6 +319,9 @@ SubmapsVec parseSubmapsAUVlib(std_data::pt_submaps& ss){
         for(unsigned int i=0; i<submap.rows(); i++){
             Eigen::Vector3f p = submap.row(i).cast<float>();
             submap_k.submap_pcl_.points.push_back(PointT(p[0],p[1],p[2]));
+        }
+        if(submap_k.submap_id_ == 177){
+            break;
         }
 
 //        if(checkSubmapSize(submap_k)){
