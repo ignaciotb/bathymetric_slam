@@ -101,8 +101,8 @@ std::pair<int, corners> getSubmapCorners(const SubmapObj& submap){
     max_y = points.col(1).maxCoeff() * overlap_coverage;   // max y
 
     // 2D transformation of the corners back to original place
-    Eigen::Isometry2d submap_tf2d = (Eigen::Isometry2d) submap.submap_tf_.linear().cast<double>();
-    submap_tf2d.translation() = submap.submap_tf_.matrix().block<2,1>(0,3).cast<double>();
+//    Eigen::Isometry2d submap_tf2d = (Eigen::Isometry2d) submap.submap_tf_.linear().cast<double>();
+//    submap_tf2d.translation() = submap.submap_tf_.matrix().block<2,1>(0,3).cast<double>();
 
     corners submap_i_corners;
     submap_i_corners.push_back(submap.submap_tf_.cast<double>() * Vector3d(min_x, min_y, 0));
@@ -199,7 +199,12 @@ std::vector<SubmapObj, Eigen::aligned_allocator<SubmapObj>> readSubmapsInDir(con
                 swath_cnt = swath_cnt + 1;
                 prev_direction = euler[2];
             }
-            submaps_set.push_back(SubmapObj(submap_cnt, swath_cnt, *submap_ptr));
+            SubmapObj submap_i(submap_cnt, swath_cnt, *submap_ptr);
+
+            // Add AUV track to submap object
+            submap_i.auv_tracks_.conservativeResize(submap_i.auv_tracks_.rows()+1, 3);
+            submap_i.auv_tracks_.row(0) = submap_i.submap_tf_.translation().transpose().cast<double>();
+            submaps_set.push_back(submap_i);
             submap_cnt ++;
          }
     }
@@ -228,21 +233,6 @@ PointsT trackToMatrixSubmap(const SubmapsVec& submaps_set){
     return tracks;
 }
 
-PointsT trackofSubmap(const SubmapsVec& submaps_set){
-
-    PointsT tracks;
-    int cnt;
-    for(const SubmapObj& submap: submaps_set){
-        Eigen::MatrixXd track_submap_i(submap.submap_pcl_.points.size()/134, 3);
-        cnt = 0;
-        for(int i=0; i<submap.submap_pcl_.points.size()/134; i++){
-             track_submap_i.row(cnt) = submap.submap_pcl_.points.at(i).getArray3fMap().cast<double>().transpose();
-             cnt++;
-        }
-        tracks.push_back(track_submap_i);
-    }
-    return tracks;
-}
 
 Eigen::Array3f computeInfoInSubmap(const SubmapObj& submap){
 
@@ -319,9 +309,6 @@ SubmapsVec parseSubmapsAUVlib(std_data::pt_submaps& ss){
         for(unsigned int i=0; i<submap.rows(); i++){
             Eigen::Vector3f p = submap.row(i).cast<float>();
             submap_k.submap_pcl_.points.push_back(PointT(p[0],p[1],p[2]));
-        }
-        if(submap_k.submap_id_ == 177){
-            break;
         }
 
 //        if(checkSubmapSize(submap_k)){

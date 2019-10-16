@@ -31,8 +31,10 @@
 #include "graph_optimization/ceres_optimizer.hpp"
 #include "graph_optimization/read_g2o.h"
 
+#include "bathy_slam/bathy_slam.hpp"
+
 #define INTERACTIVE 0
-#define VISUAL 0
+#define VISUAL 1
 
 using namespace Eigen;
 using namespace std;
@@ -41,13 +43,14 @@ using namespace g2o;
 int main(int argc, char** argv){
 
     // Inputs
-    std::string folder_str, path_str, output_str, original;
+    std::string folder_str, path_str, output_str, original, simulation;
     cxxopts::Options options("MyProgram", "One line description of MyProgram");
     options.add_options()
         ("help", "Print help")
         ("covs_folder", "Input covs folder", cxxopts::value(folder_str))
         ("output_cereal", "Output graph cereal", cxxopts::value(output_str))
         ("original", "Disturb original trajectory", cxxopts::value(original))
+        ("simulation", "Simulation data from Gazebo", cxxopts::value(simulation))
         ("slam_cereal", "Input ceres file", cxxopts::value(path_str));
 
     auto result = options.parse(argc, argv);
@@ -59,22 +62,40 @@ int main(int argc, char** argv){
         output_str = "output_cereal.cereal";
     }
     boost::filesystem::path output_path(output_str);
-    string loopsFilename = "loop_closures.txt"; // LCs list output file
     string outFilename = "graph_corrupted.g2o";   // G2O output file
 
     // Parse submaps from cereal file
     SubmapsVec submaps_gt;
     boost::filesystem::path submaps_path(path_str);
     std::cout << "Input data " << boost::filesystem::basename(submaps_path) << std::endl;
-    if(original == "yes"){
-        std_data::pt_submaps ss = std_data::read_data<std_data::pt_submaps>(submaps_path);
-        submaps_gt = parseSubmapsAUVlib(ss);
+    if(simulation == "yes"){
+        submaps_gt = readSubmapsInDir(submaps_path.string());
     }
     else{
-        std::ifstream is(boost::filesystem::basename(submaps_path) + ".cereal", std::ifstream::binary);
-        {
-          cereal::BinaryInputArchive iarchive(is);
-          iarchive(submaps_gt);
+        if(original == "yes"){
+            std_data::pt_submaps ss = std_data::read_data<std_data::pt_submaps>(submaps_path);
+            submaps_gt = parseSubmapsAUVlib(ss);
+        }
+        else{
+            std::ifstream is(boost::filesystem::basename(submaps_path) + ".cereal", std::ifstream::binary);
+            {
+              cereal::BinaryInputArchive iarchive(is);
+              iarchive(submaps_gt);
+            }
+        }
+
+        // Filtering of submaps
+        PointCloudT::Ptr cloud_ptr (new PointCloudT);
+        pcl::UniformSampling<PointT> us_filter;
+        us_filter.setInputCloud (cloud_ptr);
+        us_filter.setRadiusSearch(1);   // 1 for Borno, 2 for Antarctica
+        for(SubmapObj& submap_i: submaps_gt){
+    //        std::cout << "before " << submap_i.submap_pcl_.size() << std::endl;
+            *cloud_ptr = submap_i.submap_pcl_;
+            us_filter.setInputCloud(cloud_ptr);
+            us_filter.filter(*cloud_ptr);
+            submap_i.submap_pcl_ = *cloud_ptr;
+    //        std::cout << submap_i.submap_pcl_.size() << std::endl;
         }
     }
 
@@ -83,20 +104,6 @@ int main(int argc, char** argv){
     boost::filesystem::path folder(folder_str);
     if(boost::filesystem::is_directory(folder)) {
         covs_lc = readCovsFromFiles(folder);
-    }
-
-    // Filtering of submaps
-    PointCloudT::Ptr cloud_ptr (new PointCloudT);
-    pcl::UniformSampling<PointT> us_filter;
-    us_filter.setInputCloud (cloud_ptr);
-    us_filter.setRadiusSearch(1);   // 1 for Borno, 2 for Antarctica
-    for(SubmapObj& submap_i: submaps_gt){
-//        std::cout << "before " << submap_i.submap_pcl_.size() << std::endl;
-        *cloud_ptr = submap_i.submap_pcl_;
-        us_filter.setInputCloud(cloud_ptr);
-        us_filter.filter(*cloud_ptr);
-        submap_i.submap_pcl_ = *cloud_ptr;
-//        std::cout << submap_i.submap_pcl_.size() << std::endl;
     }
 
     // Benchmark GT
@@ -120,88 +127,18 @@ int main(int argc, char** argv){
 #endif
 
     // GICP reg for submaps
-    SubmapRegistration* gicp_reg = new SubmapRegistration();
+    SubmapRegistration gicp_reg;
 
     // Graph constructor
-    GraphConstructor* graph_obj = new GraphConstructor(covs_lc);
-    ofstream fileOutputStream;
-    fileOutputStream.open(loopsFilename, std::ofstream::out);
+    GraphConstructor graph_obj(covs_lc);
 
     // Noise generators
     GaussianGen transSampler, rotSampler;
     Matrix<double, 6,6> information = generateGaussianNoise(transSampler, rotSampler);
 
-    SubmapObj submap_trg;
-    SubmapsVec submaps_prev, submaps_reg;
-    double info_thres = 0.1;
-    for(SubmapObj& submap_i: submaps_gt){
-        std::cout << " ----------- Submap " << submap_i.submap_id_ << ", swath "
-                  << submap_i.swath_id_ << " ------------"<< std::endl;
-
-        // Look for loop closures
-        for(SubmapObj& submap_k: submaps_reg){
-            // Don't look for overlaps between submaps of the same swath or the prev submap
-            if(submap_k.submap_id_ != submap_i.submap_id_ - 1){
-                submaps_prev.push_back(submap_k);
-            }
-        }
-        submap_i.findOverlaps(submaps_prev);
-        submaps_prev.clear();
-        submaps_reg.push_back(submap_i); // Add submap_i to registered set (just for visualization here)
-
-#if INTERACTIVE == 1
-        // Update visualizer
-        visualizer->updateVisualizer(submaps_reg);
-        while(!viewer.wasStopped ()){
-            viewer.spinOnce ();
-        }
-        viewer.resetStoppedFlag();
-#endif
-        // Create graph vertex i
-        graph_obj->createNewVertex(submap_i);
-
-        // Create DR edge i and store (skip submap 0)
-        if(submap_i.submap_id_ != 0 ){
-            std::cout << "DR edge from " << submap_i.submap_id_ -1 << " to " << submap_i.submap_id_<< std::endl;
-            graph_obj->createDREdge(submap_i);
-        }
-
-        // If potential loop closure detected
-        SubmapObj submap_final = submap_i;
-        if(!submap_i.overlaps_idx_.empty()){
-            // Save loop closure to txt
-            if(fileOutputStream.is_open()){
-                fileOutputStream << submap_i.submap_id_;
-                for(unsigned int j=0; j<submap_i.overlaps_idx_.size(); j++){
-                    fileOutputStream << " " << submap_i.overlaps_idx_.at(j);
-                }
-                fileOutputStream << "\n";
-            }
-
-            // Register overlapping submaps
-            submap_trg = gicp_reg->constructTrgSubmap(submaps_reg, submap_i.overlaps_idx_);
-            addNoiseToSubmap(transSampler, rotSampler, submap_i); // Add disturbance to source submap
-            if(gicp_reg->gicpSubmapRegistration(submap_trg, submap_i)){
-                submap_final = submap_i;
-            }
-            submap_trg.submap_pcl_.clear();
-
-            // Create loop closures
-            graph_obj->findLoopClosures(submap_final, submaps_reg, info_thres);
-        }
-        submaps_reg.pop_back(); // Remove unregistered submap_i
-        submaps_reg.push_back(submap_final);    // Add registered submap_i
-
-#if INTERACTIVE == 1
-        // Update visualizer
-        visualizer->updateVisualizer(submaps_reg);
-        while(!viewer.wasStopped ()){
-            viewer.spinOnce ();
-        }
-        viewer.resetStoppedFlag();
-#endif
-    }
-    fileOutputStream.close();
+    // Create SLAM solver and run offline
+    BathySlam slam_solver(graph_obj, gicp_reg);
+    SubmapsVec submaps_reg = slam_solver.runOffline(submaps_gt, transSampler, rotSampler);
 
 #if VISUAL == 1
     // Update visualizer
@@ -213,13 +150,13 @@ int main(int argc, char** argv){
 #endif
 
     // Add noise to edges on the graph
-    addNoiseToGraph(transSampler, rotSampler, *graph_obj);
+    addNoiseToGraph(transSampler, rotSampler, graph_obj);
 
     // Create initial DR chain and visualize
-    graph_obj->createInitialEstimate(submaps_reg);
+    graph_obj.createInitialEstimate(submaps_reg);
 
 #if VISUAL == 1
-    visualizer->plotPoseGraphG2O(*graph_obj, submaps_reg);
+    visualizer->plotPoseGraphG2O(graph_obj, submaps_reg);
     while(!viewer.wasStopped ()){
         viewer.spinOnce ();
     }
@@ -227,7 +164,7 @@ int main(int argc, char** argv){
 #endif
 
     // Save graph to output g2o file (optimization can be run with G2O)
-    graph_obj->saveG2OFile(outFilename);
+    graph_obj.saveG2OFile(outFilename);
 
     // Benchmar corrupted
     PointsT reg_map = pclToMatrixSubmap(submaps_reg);
@@ -236,7 +173,7 @@ int main(int argc, char** argv){
 
     // Optimize graph and save to cereal
     google::InitGoogleLogging(argv[0]);
-    ceres::optimizer::MapOfPoses poses = ceres::optimizer::ceresSolver(outFilename, graph_obj->drEdges_.size());
+    ceres::optimizer::MapOfPoses poses = ceres::optimizer::ceresSolver(outFilename, graph_obj.drEdges_.size());
     ceres::optimizer::updateSubmapsCeres(poses, submaps_reg);
     std::cout << "Output cereal: " << boost::filesystem::basename(output_path) << std::endl;
     std::ofstream os(boost::filesystem::basename(output_path) + ".cereal", std::ofstream::binary);
@@ -265,9 +202,6 @@ int main(int argc, char** argv){
     std::string command_str = "./plot_results.py --initial_poses poses_original.txt --corrupted_poses poses_corrupted.txt --optimized_poses poses_optimized.txt";
     const char *command = command_str.c_str();
     system(command);
-
-    delete(gicp_reg);
-    delete(graph_obj);
 
     return 0;
 }

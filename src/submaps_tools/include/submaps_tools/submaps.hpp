@@ -96,8 +96,6 @@ Array3f computeInfoInSubmap(const SubmapObj& submap);
 
 SubmapsVec parseSubmapsAUVlib(std_data::pt_submaps& ss);
 
-PointsT trackofSubmap(const SubmapsVec& submaps_set);
-
 void transformSubmapObj(SubmapObj& submap, Isometry3f& poseDRt);
 
 std::pair<int, corners> getSubmapCorners(const SubmapObj& submap);
