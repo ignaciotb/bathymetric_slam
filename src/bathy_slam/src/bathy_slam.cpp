@@ -31,15 +31,16 @@ SubmapsVec BathySlam::runOffline(SubmapsVec& submaps_gt, GaussianGen& transSampl
         }
         submap_i.findOverlaps(submaps_prev);
         submaps_prev.clear();
-        submaps_reg.push_back(submap_i); // Add submap_i to registered set (just for visualization here)
 
     #if INTERACTIVE == 1
         // Update visualizer
+        submaps_reg.push_back(submap_i); // Add submap_i to registered set (just for visualization here)
         visualizer->updateVisualizer(submaps_reg);
         while(!viewer.wasStopped ()){
             viewer.spinOnce ();
         }
         viewer.resetStoppedFlag();
+        submaps_reg.pop_back();
     #endif
         // Create graph vertex i
         graph_obj_->createNewVertex(submap_i);
@@ -73,7 +74,6 @@ SubmapsVec BathySlam::runOffline(SubmapsVec& submaps_gt, GaussianGen& transSampl
             // Create loop closures
             graph_obj_->findLoopClosures(submap_final, submaps_reg, info_thres);
         }
-        submaps_reg.pop_back(); // Remove unregistered submap_i
         submaps_reg.push_back(submap_final);    // Add registered submap_i
 
     #if INTERACTIVE == 1

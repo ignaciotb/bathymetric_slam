@@ -132,18 +132,8 @@ void GraphConstructor::createInitialEstimate(SubmapsVec& submaps_set){
         VertexSE3* from = static_cast<VertexSE3*>(e->vertex(0));
         VertexSE3* to = static_cast<VertexSE3*>(e->vertex(1));
 
-        Eigen::Isometry3d estimate_i = from->estimate() * meas_i;
-
-//        std::cout << "From estimate " << from->estimate().translation().transpose() << std::endl;
-//        std::cout << "Measurement " << meas_i.translation().transpose() << std::endl;
-        Eigen::Matrix4f tf = (estimate_i.cast<float>() *
-                              submaps_set.at(i+1).submap_tf_.cast<float>().inverse()).matrix();
-
-//        std::cout << "Estimate " << i << " " << std::endl;
-//        std::cout << tf << std::endl;
-//        std::cout << "------" << std::endl;
-
         // Transform submap_i pcl and tf
+        Eigen::Isometry3d estimate_i = from->estimate() * meas_i;
         pcl::transformPointCloud(submaps_set.at(i+1).submap_pcl_, submaps_set.at(i+1).submap_pcl_,
                                  (estimate_i.cast<float>() * submaps_set.at(i+1).submap_tf_.cast<float>().inverse()).matrix());
 
@@ -154,6 +144,47 @@ void GraphConstructor::createInitialEstimate(SubmapsVec& submaps_set){
     }
 }
 
+/// Not tested yet!
+void GraphConstructor::addNoiseToGraph(GaussianGen& transSampler, GaussianGen& rotSampler){
+
+    std::random_device rd{};
+    std::mt19937 gen{rd()};
+    std::normal_distribution<> d{0,0.01};
+
+    // Noise for all the DR edges
+    for (size_t i = 0; i < drEdges_.size(); ++i) {
+      Eigen::Isometry3d meas_i = drMeas_.at(i);
+      Eigen::Quaterniond gtQuat = (Eigen::Quaterniond)meas_i.linear();
+      Eigen::Vector3d gtTrans = meas_i.translation();
+
+      // Bias in yaw
+      double roll = 0.0, pitch = 0.0, yaw = /*0.001*/ d(gen);
+      Matrix3d m;
+      m = AngleAxisd(roll, Vector3d::UnitX())
+          * AngleAxisd(pitch, Vector3d::UnitY())
+          * AngleAxisd(yaw, Vector3d::UnitZ());
+
+      Eigen::Vector3d quatXYZ = rotSampler.generateSample();
+      double qw = 1.0 - quatXYZ.norm();
+      if (qw < 0) {
+        qw = 0.;
+        cerr << "x";
+      }
+//      Eigen::Quaterniond rot(qw, quatXYZ.x(), quatXYZ.y(), quatXYZ.z());
+      Eigen::Quaterniond rot(m);
+
+      Eigen::Vector3d trans;
+//      trans = transSampler.generateSample();
+      trans.setZero();
+
+      rot = gtQuat * rot;
+      trans = gtTrans + trans;
+
+      Eigen::Isometry3d noisyMeasurement = (Eigen::Isometry3d) rot;
+      noisyMeasurement.translation() = trans;
+      drMeas_.at(i) = noisyMeasurement;
+    }
+}
 
 void GraphConstructor::saveG2OFile(std::string outFilename){
 

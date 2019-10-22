@@ -38,7 +38,7 @@ find_package(g2o REQUIRED)
  find_package(EigenCereal REQUIRED)
  find_package(DataTools REQUIRED)
  find_package(SonarTracing REQUIRED)
- find_package(AuvlibGlad REQUIRED)
+# find_package(AuvlibGlad REQUIRED)
  find_package(BathyMaps REQUIRED)
 
 link_directories(${PCL_LIBRARY_DIRS})

@@ -83,12 +83,11 @@ int main(int argc, char** argv){
               iarchive(submaps_gt);
             }
         }
-
         // Filtering of submaps
         PointCloudT::Ptr cloud_ptr (new PointCloudT);
         pcl::UniformSampling<PointT> us_filter;
         us_filter.setInputCloud (cloud_ptr);
-        us_filter.setRadiusSearch(1);   // 1 for Borno, 2 for Antarctica
+        us_filter.setRadiusSearch(2);   // 1 for Borno, 2 for Antarctica
         for(SubmapObj& submap_i: submaps_gt){
     //        std::cout << "before " << submap_i.submap_pcl_.size() << std::endl;
             *cloud_ptr = submap_i.submap_pcl_;
@@ -136,6 +135,14 @@ int main(int argc, char** argv){
     GaussianGen transSampler, rotSampler;
     Matrix<double, 6,6> information = generateGaussianNoise(transSampler, rotSampler);
 
+//    // Noise to map
+//    addNoiseToMap(transSampler, rotSampler, submaps_gt);
+//    visualizer->updateVisualizer(submaps_gt);
+//    while(!viewer.wasStopped ()){
+//        viewer.spinOnce ();
+//    }
+//    viewer.resetStoppedFlag();
+
     // Create SLAM solver and run offline
     BathySlam slam_solver(graph_obj, gicp_reg);
     SubmapsVec submaps_reg = slam_solver.runOffline(submaps_gt, transSampler, rotSampler);
@@ -150,7 +157,7 @@ int main(int argc, char** argv){
 #endif
 
     // Add noise to edges on the graph
-    addNoiseToGraph(transSampler, rotSampler, graph_obj);
+    graph_obj.addNoiseToGraph(transSampler, rotSampler);
 
     // Create initial DR chain and visualize
     graph_obj.createInitialEstimate(submaps_reg);

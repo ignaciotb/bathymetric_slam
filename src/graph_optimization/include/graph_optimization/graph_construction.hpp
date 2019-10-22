@@ -24,6 +24,8 @@
 #include <pcl/point_types.h>
 #include <pcl/features/normal_3d.h>
 
+#include "graph_optimization/utils_g2o.hpp"
+
 using namespace std;
 using namespace Eigen;
 using namespace g2o;
@@ -60,6 +62,9 @@ public:
     void createInitialEstimate(SubmapsVec &submaps_set);
 
     void createDREdge(const SubmapObj& submap);
+
+    void addNoiseToGraph(GaussianGen& transSampler, GaussianGen& rotSampler);
+
 };
 
 #endif // GRAPH_CONSTRUCTION_HPP

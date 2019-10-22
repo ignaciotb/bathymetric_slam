@@ -25,7 +25,7 @@
 
 #include "submaps_tools/submaps.hpp"
 
-#include "graph_optimization/graph_construction.hpp"
+//#include "graph_optimization/graph_construction.hpp"
 
 using namespace std;
 using namespace g2o;
@@ -44,7 +44,5 @@ void addNoiseToSubmap(GaussianGen& transSampler,
 void addNoiseToMap(GaussianGen& transSampler,
                    GaussianGen& rotSampler,
                    SubmapsVec& submap_set);
-
-void addNoiseToGraph(GaussianGen &transSampler, GaussianGen &rotSampler, GraphConstructor& graph_obj);
 
 #endif // UTILS_G2O_HPP

@@ -52,6 +52,7 @@ target_link_libraries(utils_g2o
 
 target_link_libraries(graph_construction
 	submaps_tools
+        utils_g2o
 	${G2O_LIBS}
 )
 
