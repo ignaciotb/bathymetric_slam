@@ -20,9 +20,6 @@
 #include <pcl/point_types.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/transforms.h>
-#include <pcl/common/projection_matrix.h>
-#include <pcl/filters/uniform_sampling.h>
-#include <pcl/filters/statistical_outlier_removal.h>
 #include <eigen3/Eigen/Core>
 
 #include "data_tools/std_data.h"

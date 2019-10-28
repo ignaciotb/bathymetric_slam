@@ -19,8 +19,8 @@ SubmapsVec BathySlam::runOffline(SubmapsVec& submaps_gt, GaussianGen& transSampl
 
     double info_thres = 0.1;
     for(SubmapObj& submap_i: submaps_gt){
-        std::cout << " ----------- Submap " << submap_i.submap_id_ << ", swath "
-                  << submap_i.swath_id_ << " ------------"<< std::endl;
+//        std::cout << " ----------- Submap " << submap_i.submap_id_ << ", swath "
+//                  << submap_i.swath_id_ << " ------------"<< std::endl;
 
         // Look for loop closures
         for(SubmapObj& submap_k: submaps_reg){
@@ -47,7 +47,7 @@ SubmapsVec BathySlam::runOffline(SubmapsVec& submaps_gt, GaussianGen& transSampl
 
         // Create DR edge i and store (skip submap 0)
         if(submap_i.submap_id_ != 0 ){
-            std::cout << "DR edge from " << submap_i.submap_id_ -1 << " to " << submap_i.submap_id_<< std::endl;
+//            std::cout << "DR edge from " << submap_i.submap_id_ -1 << " to " << submap_i.submap_id_<< std::endl;
             graph_obj_->createDREdge(submap_i);
         }
 

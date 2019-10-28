@@ -52,7 +52,7 @@ void GraphConstructor::createDREdge(const SubmapObj& submap){
 
 void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapObj& submap_to){
 
-    std::cout << "LC edge from " << submap_from.submap_id_ << " to " << submap_to.submap_id_ << std::endl;
+//    std::cout << "LC edge from " << submap_from.submap_id_ << " to " << submap_to.submap_id_ << std::endl;
 
     // Generate loop closure edges
     VertexSE3* from = vertices_[submap_from.submap_id_];
@@ -74,20 +74,20 @@ void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapOb
 
     Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Zero();
 
-    // Info matrix proportional to variance in Z in the pointcloud
-    if(covs_lc_.empty()){
-        Eigen::VectorXd info_diag(3), info_diag_trans(3);
-        double z = cov_matrix.normalized().inverse().cast<double>().row(2)(2);
-        info_diag << 10000.0, 10000.0, 1000.0;
+//        double z = cov_matrix.normalized().inverse().cast<double>().row(2)(2);
 //        info_diag_trans << z, z, 10000.0;
-        info_diag_trans << 100, 100, 10000.0;
+
+    // Info matrix proportional to variance in Z in the pointcloud
+    if(covs_lc_.size() == 1){
+        Eigen::VectorXd info_diag(3), info_diag_trans(3);
+        info_diag << 10000.0, 10000.0, 1000.0;
+        info_diag_trans << covs_lc_.at(0)(0,0), covs_lc_.at(0)(0,0), 10000.0;
         information.block<3,3>(0,0) = info_diag_trans.asDiagonal();
         information.block<3,3>(3,3) = info_diag.asDiagonal();
     }
     else{
         // Info matrix from NN training
         Eigen::Matrix2d cov_reg = this->covs_lc_.at(submap_from.submap_id_);
-        std::cout << cov_reg << std::endl;
         Eigen::VectorXd info_diag(3), info_diag_trans(3);
         info_diag << 10000.0, 10000.0, 1000.0;
         information.topLeftCorner(2,2) = cov_reg.inverse();
@@ -95,7 +95,7 @@ void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapOb
         information.block<3,3>(3,3) = info_diag.asDiagonal();
     }
 
-    std::cout << information << std::endl;
+//    std::cout << information << std::endl;
     e->setInformation(information);
 
     // Check resulting COV is positive semi-definite
@@ -149,7 +149,7 @@ void GraphConstructor::addNoiseToGraph(GaussianGen& transSampler, GaussianGen& r
 
     std::random_device rd{};
     std::mt19937 gen{rd()};
-    std::normal_distribution<> d{0,0.01};
+    std::normal_distribution<> d{0,0.05};
 
     // Noise for all the DR edges
     for (size_t i = 0; i < drEdges_.size(); ++i) {
@@ -158,7 +158,7 @@ void GraphConstructor::addNoiseToGraph(GaussianGen& transSampler, GaussianGen& r
       Eigen::Vector3d gtTrans = meas_i.translation();
 
       // Bias in yaw
-      double roll = 0.0, pitch = 0.0, yaw = /*0.001*/ d(gen);
+      double roll = 0.0, pitch = 0.0, yaw = 0.001 /*d(gen)*/;
       Matrix3d m;
       m = AngleAxisd(roll, Vector3d::UnitX())
           * AngleAxisd(pitch, Vector3d::UnitY())

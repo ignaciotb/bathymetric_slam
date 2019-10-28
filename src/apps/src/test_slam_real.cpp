@@ -17,6 +17,8 @@
 #include <boost/filesystem.hpp>
 #include <cereal/archives/binary.hpp>
 
+#include <pcl/filters/uniform_sampling.h>
+
 #include "data_tools/std_data.h"
 #include "data_tools/benchmark.h"
 
@@ -34,7 +36,7 @@
 #include "bathy_slam/bathy_slam.hpp"
 
 #define INTERACTIVE 0
-#define VISUAL 1
+#define VISUAL 0
 
 using namespace Eigen;
 using namespace std;
@@ -43,7 +45,7 @@ using namespace g2o;
 int main(int argc, char** argv){
 
     // Inputs
-    std::string folder_str, path_str, output_str, original, simulation;
+    std::string folder_str, path_str, output_str, original, simulation, const_cov, mc_method;
     cxxopts::Options options("MyProgram", "One line description of MyProgram");
     options.add_options()
         ("help", "Print help")
@@ -51,6 +53,8 @@ int main(int argc, char** argv){
         ("output_cereal", "Output graph cereal", cxxopts::value(output_str))
         ("original", "Disturb original trajectory", cxxopts::value(original))
         ("simulation", "Simulation data from Gazebo", cxxopts::value(simulation))
+        ("const_cov", "Constant covariance value", cxxopts::value(const_cov))
+        ("mc", "Monte Carlo covs", cxxopts::value(mc_method))
         ("slam_cereal", "Input ceres file", cxxopts::value(path_str));
 
     auto result = options.parse(argc, argv);
@@ -87,7 +91,7 @@ int main(int argc, char** argv){
         PointCloudT::Ptr cloud_ptr (new PointCloudT);
         pcl::UniformSampling<PointT> us_filter;
         us_filter.setInputCloud (cloud_ptr);
-        us_filter.setRadiusSearch(2);   // 1 for Borno, 2 for Antarctica
+        us_filter.setRadiusSearch(1);   // 1 for Borno, 2 for Antarctica
         for(SubmapObj& submap_i: submaps_gt){
     //        std::cout << "before " << submap_i.submap_pcl_.size() << std::endl;
             *cloud_ptr = submap_i.submap_pcl_;
@@ -100,9 +104,27 @@ int main(int argc, char** argv){
 
     // Read training covs from folder
     covs covs_lc;
+    std::string results_path;
     boost::filesystem::path folder(folder_str);
     if(boost::filesystem::is_directory(folder)) {
         covs_lc = readCovsFromFiles(folder);
+        if(mc_method == "yes"){
+            results_path = "results_mc.txt";
+        }
+        else{
+            results_path = "results_nn.txt";
+        }
+        std::cout << "Results to " << results_path << std::endl;
+    }
+    else{
+        if(const_cov.empty()){
+            std::cout << "Input a covariance value for the optimization" << std::endl;
+            exit(0);
+        }
+        Eigen::Vector2d diag;
+        diag << std::stod(const_cov), std::stod(const_cov);
+        covs_lc.push_back(diag.asDiagonal());
+        results_path = "results_" + const_cov + ".txt";
     }
 
     // Benchmark GT
@@ -180,15 +202,16 @@ int main(int argc, char** argv){
 
     // Optimize graph and save to cereal
     google::InitGoogleLogging(argv[0]);
-    ceres::optimizer::MapOfPoses poses = ceres::optimizer::ceresSolver(outFilename, graph_obj.drEdges_.size());
-    ceres::optimizer::updateSubmapsCeres(poses, submaps_reg);
-    std::cout << "Output cereal: " << boost::filesystem::basename(output_path) << std::endl;
-    std::ofstream os(boost::filesystem::basename(output_path) + ".cereal", std::ofstream::binary);
-    {
-        cereal::BinaryOutputArchive oarchive(os);
-        oarchive(submaps_reg);
-        os.close();
-    }
+    std::tuple<ceres::optimizer::MapOfPoses, int> opt_results;
+    opt_results = ceres::optimizer::ceresSolver(outFilename, graph_obj.drEdges_.size());
+    ceres::optimizer::updateSubmapsCeres(std::get<0>(opt_results), submaps_reg);
+//    std::cout << "Output cereal: " << boost::filesystem::basename(output_path) << std::endl;
+//    std::ofstream os(boost::filesystem::basename(output_path) + ".cereal", std::ofstream::binary);
+//    {
+//        cereal::BinaryOutputArchive oarchive(os);
+//        oarchive(submaps_reg);
+//        os.close();
+//    }
 
 #if VISUAL == 1
     // Visualize Ceres output
@@ -206,7 +229,29 @@ int main(int argc, char** argv){
     benchmark.add_benchmark(opt_map, opt_track, "optimized");
     benchmark.print_summary();
 
-    std::string command_str = "./plot_results.py --initial_poses poses_original.txt --corrupted_poses poses_corrupted.txt --optimized_poses poses_optimized.txt";
+    // Save number of iterations
+    ofstream fileOutputStream;
+    if (outFilename != "-") {
+      fileOutputStream.open(results_path.c_str(), std::ios::in | std::ios::out | std::ios::ate);
+    } else {
+      cerr << "writing to stdout" << endl;
+    }
+    std::cout << "Results to " << results_path << std::endl;
+
+    ostream& fout = outFilename != "-" ? fileOutputStream : std::cout;
+    fout << std::endl;
+    fout << std::get<1>(opt_results) << " ";
+    fileOutputStream.close();
+
+    // Save benchmark results
+    benchmark.save_summary(results_path);
+
+    // Save ETA resuls
+    std::string command_str = "./plot_results.py --initial_poses poses_original.txt "
+                              "--corrupted_poses poses_corrupted.txt --optimized_poses poses_optimized.txt "
+                              "--output_file " + results_path;
+    std::cout << "Results to " << results_path << std::endl;
+
     const char *command = command_str.c_str();
     system(command);
 
