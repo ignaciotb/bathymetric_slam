@@ -79,11 +79,13 @@ void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapOb
 
     // Info matrix proportional to variance in Z in the pointcloud
     if(covs_lc_.size() == 1){
-        Eigen::VectorXd info_diag(3), info_diag_trans(3);
-        info_diag << 10000.0, 10000.0, 1000.0;
+        Eigen::VectorXd info_diag(4), info_diag_trans(3);
+        info_diag << 10000.0, 10000.0, 10000.0, 1000.0;
         info_diag_trans << covs_lc_.at(0)(0,0), covs_lc_.at(0)(0,0), 10000.0;
-        information.block<3,3>(0,0) = info_diag_trans.asDiagonal();
-        information.block<3,3>(3,3) = info_diag.asDiagonal();
+//        information.block<3,3>(0,0) = info_diag_trans.asDiagonal();
+        information.block<2,2>(0,0) << 5.382, -0.486, -0.486, 8.057;  //Borno
+//        information.block<2,2>(0,0) << 3.348, -3.127, -3.127, 5.445;    // Antarctica
+        information.block<4,4>(2,2) = info_diag.asDiagonal();
     }
     else{
         // Info matrix from NN training
@@ -149,7 +151,7 @@ void GraphConstructor::addNoiseToGraph(GaussianGen& transSampler, GaussianGen& r
 
     std::random_device rd{};
     std::mt19937 gen{rd()};
-    std::normal_distribution<> d{0,0.05};
+    std::normal_distribution<> d{0,0.01};
 
     // Noise for all the DR edges
     for (size_t i = 0; i < drEdges_.size(); ++i) {

@@ -36,7 +36,7 @@
 #include "bathy_slam/bathy_slam.hpp"
 
 #define INTERACTIVE 0
-#define VISUAL 0
+#define VISUAL 1
 
 using namespace Eigen;
 using namespace std;
@@ -92,14 +92,14 @@ int main(int argc, char** argv){
         pcl::UniformSampling<PointT> us_filter;
         us_filter.setInputCloud (cloud_ptr);
         us_filter.setRadiusSearch(1);   // 1 for Borno, 2 for Antarctica
-        for(SubmapObj& submap_i: submaps_gt){
-    //        std::cout << "before " << submap_i.submap_pcl_.size() << std::endl;
-            *cloud_ptr = submap_i.submap_pcl_;
-            us_filter.setInputCloud(cloud_ptr);
-            us_filter.filter(*cloud_ptr);
-            submap_i.submap_pcl_ = *cloud_ptr;
-    //        std::cout << submap_i.submap_pcl_.size() << std::endl;
-        }
+//        for(SubmapObj& submap_i: submaps_gt){
+//    //        std::cout << "before " << submap_i.submap_pcl_.size() << std::endl;
+//            *cloud_ptr = submap_i.submap_pcl_;
+//            us_filter.setInputCloud(cloud_ptr);
+//            us_filter.filter(*cloud_ptr);
+//            submap_i.submap_pcl_ = *cloud_ptr;
+//    //        std::cout << submap_i.submap_pcl_.size() << std::endl;
+//        }
     }
 
     // Read training covs from folder
@@ -205,13 +205,13 @@ int main(int argc, char** argv){
     std::tuple<ceres::optimizer::MapOfPoses, int> opt_results;
     opt_results = ceres::optimizer::ceresSolver(outFilename, graph_obj.drEdges_.size());
     ceres::optimizer::updateSubmapsCeres(std::get<0>(opt_results), submaps_reg);
-//    std::cout << "Output cereal: " << boost::filesystem::basename(output_path) << std::endl;
-//    std::ofstream os(boost::filesystem::basename(output_path) + ".cereal", std::ofstream::binary);
-//    {
-//        cereal::BinaryOutputArchive oarchive(os);
-//        oarchive(submaps_reg);
-//        os.close();
-//    }
+    std::cout << "Output cereal: " << boost::filesystem::basename(output_path) << std::endl;
+    std::ofstream os(boost::filesystem::basename(output_path) + ".cereal", std::ofstream::binary);
+    {
+        cereal::BinaryOutputArchive oarchive(os);
+        oarchive(submaps_reg);
+        os.close();
+    }
 
 #if VISUAL == 1
     // Visualize Ceres output
