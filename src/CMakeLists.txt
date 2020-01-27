@@ -28,17 +28,17 @@ include(GNUInstallDirs)
 find_package(Ceres REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(PCL 1.8 REQUIRED)
-find_package(OpenCV REQUIRED)
+find_package(OpenCV 3 REQUIRED)
 find_package(g2o REQUIRED)
 
 # AUVLIB stuff
- # find_package(LIBIGL REQUIRED QUIET)
+#  find_package(LIBIGL REQUIRED QUIET)
  find_package(LibXTF REQUIRED)
  find_package(LibGSF REQUIRED)
  find_package(EigenCereal REQUIRED)
  find_package(DataTools REQUIRED)
  find_package(SonarTracing REQUIRED)
-# find_package(AuvlibGlad REQUIRED)
+ find_package(AuvlibGlad REQUIRED)
  find_package(BathyMaps REQUIRED)
 
 link_directories(${PCL_LIBRARY_DIRS})
@@ -52,6 +52,7 @@ include_directories(
 	${EIGEN_INCLUDE_DIRS} 
 	${G2O_INCLUDE_DIRS} 
 	${PCL_INCLUDE_DIRS}
+  ${OPENCV_INCLUDE_DIRS}
 )
 
 LIST(APPEND G2O_LIBS
