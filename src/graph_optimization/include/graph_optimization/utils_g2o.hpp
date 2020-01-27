@@ -17,7 +17,7 @@
 
 #include "g2o/stuff/sampler.h"
 
-#include <eigen3/Eigen/Core>
+#include <Eigen/Core>
 
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>

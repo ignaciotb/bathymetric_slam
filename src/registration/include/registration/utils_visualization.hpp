@@ -20,7 +20,7 @@
 #include <pcl/visualization/cloud_viewer.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
-#include <eigen3/Eigen/Core>
+#include <Eigen/Core>
 
 #include "submaps_tools/submaps.hpp"
 #include "graph_optimization/graph_construction.hpp"

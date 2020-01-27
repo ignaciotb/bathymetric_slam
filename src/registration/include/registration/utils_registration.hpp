@@ -20,8 +20,8 @@
 #include <pcl/visualization/cloud_viewer.h>
 #include <pcl/registration/icp.h>
 
-#include <eigen3/Eigen/Geometry>
-#include <eigen3/Eigen/Core>
+#include <Eigen/Geometry>
+#include <Eigen/Core>
 
 
 

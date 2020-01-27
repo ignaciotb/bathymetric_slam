@@ -12,7 +12,7 @@
 #ifndef GICP_REG_HPP
 #define GICP_REG_HPP
 
-#include <eigen3/Eigen/Core>
+#include <Eigen/Core>
 #include <pcl/registration/gicp.h>
 #include <pcl/registration/warp_point_rigid.h>
 #include <pcl/registration/warp_point_rigid_3d.h>

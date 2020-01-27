@@ -16,8 +16,8 @@
 #include "g2o/types/slam3d/edge_se3.h"
 #include "g2o/core/factory.h"
 
-#include <eigen3/Eigen/Core>
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Core>
+#include <Eigen/Dense>
 
 #include "submaps_tools/submaps.hpp"
 
