@@ -13,6 +13,15 @@
 
 using namespace Eigen;
 
+MapObj::MapObj(){
+
+}
+
+MapObj::MapObj(PointCloudT& map_pcl){
+
+}
+
+
 SubmapObj::SubmapObj(){
 
     submap_info_ = createDRWeights();
@@ -325,6 +334,52 @@ SubmapsVec parseSubmapsAUVlib(std_data::pt_submaps& ss){
     }
 
     return submaps_set;
+}
+
+MapObj parseMapAUVlib(std_data::pt_submaps& ss){
+
+    std::cout << "Number of submaps " << ss.points.size() << std::endl;
+    double easting = 0;
+    double northing = 0;
+
+    MapObj map_j;
+    for(unsigned int k=0; k<ss.points.size(); k++){
+        // Apply original transform to points and vehicle track
+        MatrixXd submap = ss.points.at(k);
+        submap = submap * ss.rots.at(k).transpose();
+        submap.array().rowwise() += ss.trans.at(k).transpose().array();
+
+        MatrixXd tracks = ss.tracks.at(k);
+        tracks = tracks * ss.rots.at(k).transpose();
+        tracks.array().rowwise() += ss.trans.at(k).transpose().array();
+        map_j.auv_tracks_ = tracks;
+
+        // Substract translation on E-N coordinates to avoid losing accuracy on floats
+        if(k==0){
+            std::cout << "Coord " << submap.row(100)[0] << " , " << submap.row(100)[1] << std::endl;
+            easting = (double)((int)submap.row(100)[0]/1000)*1000;
+            northing = (double)((int)submap.row(100)[1]/1000)*1000;
+            std::cout << "Coord main " << easting << " , " << northing << std::endl;
+
+            // Map tf will be that of the first submap of the survey
+            Eigen::Quaterniond rot(ss.rots.at(k));
+            Eigen::Vector3f trans = ss.trans.at(k).cast<float>();
+            map_j.submap_tf_ = Isometry3f (Isometry3f(Translation3f(trans)) *
+                                        Isometry3f(rot.normalized().cast<float>()));
+            map_j.submap_tf_.translation().array() -= Vector3f(easting, northing, 0).transpose().array();
+
+        }
+        submap.array().rowwise() -= Vector3d(easting, northing, 0).transpose().array();
+        map_j.auv_tracks_.array().rowwise() -= Vector3d(easting, northing, 0).transpose().array();
+
+        // Create PCL from PointsT
+        for(unsigned int i=0; i<submap.rows(); i++){
+            Eigen::Vector3f p = submap.row(i).cast<float>();
+            map_j.submap_pcl_.points.push_back(PointT(p[0],p[1],p[2]));
+        }
+    }
+
+    return map_j;
 }
 
 void transformSubmapObj(SubmapObj& submap, Eigen::Isometry3f& poseDRt){

@@ -61,6 +61,17 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
+class MapObj: public SubmapObj{
+
+public:
+
+    MapObj();
+
+    MapObj(PointCloudT& map_pcl);
+
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+};
+
 template<class Archive>
 void save(Archive & archive,
           SubmapObj const & m)
@@ -95,6 +106,8 @@ std::vector<SubmapObj, Eigen::aligned_allocator<SubmapObj> > readSubmapsInDir(co
 Array3f computeInfoInSubmap(const SubmapObj& submap);
 
 SubmapsVec parseSubmapsAUVlib(std_data::pt_submaps& ss);
+
+MapObj parseMapAUVlib(std_data::pt_submaps& ss);
 
 void transformSubmapObj(SubmapObj& submap, Isometry3f& poseDRt);
 
