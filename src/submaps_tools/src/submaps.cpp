@@ -275,6 +275,8 @@ SubmapsVec parseSubmapsAUVlib(std_data::pt_submaps& ss){
     double northing = 0;
 
     int submap_id = 0;
+    Isometry3d map_tf;
+    Isometry3d submap_tf;
     for(unsigned int k=0; k<ss.points.size(); k++){
         SubmapObj submap_k;
         submap_k.submap_id_ = submap_id++;
@@ -298,21 +300,21 @@ SubmapsVec parseSubmapsAUVlib(std_data::pt_submaps& ss){
         submap_k.auv_tracks_ = tracks;
 
         // Construct submap tf
+        int mid = (tracks.size() % 2 == 0)? tracks.size()/2: (tracks.size()+1)/2;
         Eigen::Quaterniond rot(ss.rots.at(k));
-        Eigen::Vector3f trans = ss.trans.at(k).cast<float>();
-        submap_k.submap_tf_ = Isometry3f (Isometry3f(Translation3f(trans)) *
-                                          Isometry3f(rot.normalized().cast<float>()));
+        Eigen::Vector3d trans = ss.trans.at(k);
+        trans(2) = tracks.row(mid)(1);
+        submap_tf = Isometry3d(Isometry3d(Translation3d(trans)) *
+                                         Isometry3d(rot.normalized()));
 
-        // Substract translation on E-N coordinates to avoid losing accuracy on floats
+        // Create map frame on top of first submap frame: avoid losing accuracy on floats
         if(k==0){
-            std::cout << "Coord " << submap.row(100)[0] << " , " << submap.row(100)[1] << std::endl;
-            easting = (double)((int)submap.row(100)[0]/1000)*1000;
-            northing = (double)((int)submap.row(100)[1]/1000)*1000;
-            std::cout << "Coord main " << easting << " , " << northing << std::endl;
+            map_tf = submap_tf;
         }
-        submap.array().rowwise() -= Vector3d(easting, northing, 0).transpose().array();
-        submap_k.auv_tracks_.array().rowwise() -= Vector3d(easting, northing, 0).transpose().array();
-        submap_k.submap_tf_.translation().array() -= Vector3f(easting, northing, 0).transpose().array();
+        submap.array().rowwise() -= map_tf.translation().transpose().array();
+        submap_k.auv_tracks_.array().rowwise() -= map_tf.translation().transpose().array();
+        submap_tf.translation().array() -= map_tf.translation().transpose().array();
+        submap_k.submap_tf_ = submap_tf.cast<float>();
 
         // Create PCL from PointsT
         for(unsigned int i=0; i<submap.rows(); i++){
