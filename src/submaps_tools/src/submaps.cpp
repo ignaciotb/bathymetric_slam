@@ -266,7 +266,7 @@ Eigen::Array3f computeInfoInSubmap(const SubmapObj& submap){
     return cond_num;
 }
 
-SubmapsVec ping2submap(std_data::mbes_ping::PingsT& pings){
+SubmapsVec parsePingsAUVlib(std_data::mbes_ping::PingsT& pings){
 
     SubmapsVec pings_subs;
     std::cout << std::fixed;

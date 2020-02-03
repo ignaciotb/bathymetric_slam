@@ -111,7 +111,7 @@ SubmapsVec parseSubmapsAUVlib(std_data::pt_submaps& ss);
 
 MapObj parseMapAUVlib(std_data::pt_submaps& ss);
 
-SubmapsVec ping2submap(std_data::mbes_ping::PingsT& pings);
+SubmapsVec parsePingsAUVlib(std_data::mbes_ping::PingsT& pings);
 
 void transformSubmapObj(SubmapObj& submap, Isometry3f& poseDRt);
 
