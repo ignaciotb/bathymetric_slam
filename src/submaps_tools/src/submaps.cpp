@@ -10,6 +10,7 @@
  */
 
 #include "submaps_tools/submaps.hpp"
+#include <iomanip>
 
 using namespace Eigen;
 
@@ -265,14 +266,66 @@ Eigen::Array3f computeInfoInSubmap(const SubmapObj& submap){
     return cond_num;
 }
 
+SubmapsVec ping2submap(std_data::mbes_ping::PingsT& pings){
+
+    SubmapsVec pings_subs;
+    std::cout << std::fixed;
+    std::cout << std::setprecision(10);
+
+    // For every .all file
+    int ping_cnt = 0;
+    Isometry3d map_tf;
+    Isometry3d submap_tf;
+    for (auto pos = pings.begin(); pos != pings.end(); ) {
+        auto next = std::find_if(pos, pings.end(), [&](const std_data::mbes_ping& ping) {
+            return ping.first_in_file_ && (&ping != &(*pos));
+        });
+        std_data::mbes_ping::PingsT track_pings;
+        track_pings.insert(track_pings.end(), pos, next);
+        cout << "found 1 pos!" << endl;
+
+        if (pos == next) {
+            break;
+        }
+
+        // get the direction of the submap as the mean direction
+        Vector3d dir = track_pings.back().pos_ - track_pings.front().pos_;
+        Vector3d ang; ang << 0., 0., std::atan2(dir(1), dir(0));
+        Eigen::Matrix3d RM = data_transforms::euler_to_matrix(ang(0), ang(1), ang(2));
+
+        // Create map frame on top of first submap frame: avoid losing accuracy on floats
+        if(ping_cnt==0){
+            map_tf.translation() = track_pings.back().pos_;
+            map_tf.linear() = RM;
+            std::cout << "Map tf " << map_tf.translation().transpose() << std::endl;
+        }
+        ping_cnt ++;
+
+        // For every ping in the .all file
+        for (std_data::mbes_ping& ping : track_pings) {
+            SubmapObj ping_sub;
+            for (Vector3d& p : ping.beams) {
+                p -= map_tf.translation();
+                ping_sub.submap_pcl_.points.push_back(PointT(p.x(), p.y(), p.z()));
+            }
+            ping_sub.submap_tf_.translation() = (ping.pos_- map_tf.translation()).cast<float>();
+            ping_sub.submap_tf_.linear() = RM.cast<float>();
+
+            pings_subs.push_back(ping_sub);
+        }
+        pos = next;
+    }
+    return pings_subs;
+}
+
 SubmapsVec parseSubmapsAUVlib(std_data::pt_submaps& ss){
 
     SubmapsVec submaps_set;
+    std::cout << std::fixed;
+    std::cout << std::setprecision(10);
     int swath_cnt =0;
     int swath_cnt_prev = 0;
     std::cout << "Number of submaps " << ss.points.size() << std::endl;
-    double easting = 0;
-    double northing = 0;
 
     int submap_id = 0;
     Isometry3d map_tf;
@@ -304,12 +357,13 @@ SubmapsVec parseSubmapsAUVlib(std_data::pt_submaps& ss){
         Eigen::Quaterniond rot(ss.rots.at(k));
         Eigen::Vector3d trans = ss.trans.at(k);
         trans(2) = tracks.row(mid)(1);
-        submap_tf = Isometry3d(Isometry3d(Translation3d(trans)) *
-                                         Isometry3d(rot.normalized()));
+        submap_tf.translation() = trans;
+        submap_tf.linear() = rot.toRotationMatrix();
 
         // Create map frame on top of first submap frame: avoid losing accuracy on floats
         if(k==0){
             map_tf = submap_tf;
+            std::cout << "Map tf " << map_tf.translation().transpose() << std::endl;
         }
         submap.array().rowwise() -= map_tf.translation().transpose().array();
         submap_k.auv_tracks_.array().rowwise() -= map_tf.translation().transpose().array();
@@ -318,23 +372,11 @@ SubmapsVec parseSubmapsAUVlib(std_data::pt_submaps& ss){
 
         // Create PCL from PointsT
         for(unsigned int i=0; i<submap.rows(); i++){
-            Eigen::Vector3f p = submap.row(i).cast<float>();
-            submap_k.submap_pcl_.points.push_back(PointT(p[0],p[1],p[2]));
+            submap_k.submap_pcl_.points.push_back(PointT(submap.row(i)[0],
+                                                  submap.row(i)[1],submap.row(i)[2]));
         }
-
-//        if(checkSubmapSize(submap_k)){
-            submaps_set.push_back(submap_k);
-//        }
-//        else{
-//            submap_id--;
-////            if(swath_cnt != swath_cnt_prev){
-////                swath_cnt--;
-////                swath_cnt_prev--;
-////            }
-//        }
-
+        submaps_set.push_back(submap_k);
     }
-
     return submaps_set;
 }
 

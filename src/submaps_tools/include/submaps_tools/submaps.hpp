@@ -26,6 +26,8 @@
 #include <Eigen/Core>
 
 #include "data_tools/std_data.h"
+#include <data_tools/navi_data.h>
+#include <data_tools/transforms.h>
 
 using namespace std;
 using namespace Eigen;
@@ -108,6 +110,8 @@ Array3f computeInfoInSubmap(const SubmapObj& submap);
 SubmapsVec parseSubmapsAUVlib(std_data::pt_submaps& ss);
 
 MapObj parseMapAUVlib(std_data::pt_submaps& ss);
+
+SubmapsVec ping2submap(std_data::mbes_ping::PingsT& pings);
 
 void transformSubmapObj(SubmapObj& submap, Isometry3f& poseDRt);
 

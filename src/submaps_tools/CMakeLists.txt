@@ -19,6 +19,8 @@ target_include_directories(submaps_tools PUBLIC
 
 target_link_libraries(submaps_tools PUBLIC 
         std_data
+        navi_data
+        data_transforms
 	${PCL_LIBRARIES}
 )
 
