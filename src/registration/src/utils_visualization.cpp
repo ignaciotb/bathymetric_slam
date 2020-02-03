@@ -97,6 +97,22 @@ void SubmapsVisualizer::updateVisualizer(const SubmapsVec& submaps_set){
     viewer_.spinOnce();
 }
 
+void SubmapsVisualizer::addSubmap(const SubmapObj& submap_i){
+
+    // Add pointclouds
+    if(this->traj_cnt_ == NULL){
+        this->traj_cnt_ = 0;
+    }
+    PointCloudT::Ptr submap_ptr (new PointCloudT);
+    submap_ptr.reset(new PointCloudT(submap_i.submap_pcl_));
+    PointCloudColorHandlerCustom<PointT> cloud_color(submap_ptr, submap_i.colors_[0], submap_i.colors_[1], submap_i.colors_[2]);
+    viewer_.addPointCloud(submap_ptr, cloud_color, "cloud_" + std::to_string(this->traj_cnt_), vp1_);
+    viewer_.addCoordinateSystem(3.0, submap_i.submap_tf_, "cloud_" + std::to_string(this->traj_cnt_), vp1_);
+    std::cout << "Adding ping " << this->traj_cnt_ << std::endl;
+    this->traj_cnt_++;
+}
+
+
 void SubmapsVisualizer::plotPoseGraphG2O(const GraphConstructor& graph, const SubmapsVec& submaps_set){
 
     // Clean initial graph

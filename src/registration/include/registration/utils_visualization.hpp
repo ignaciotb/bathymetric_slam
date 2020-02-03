@@ -41,6 +41,7 @@ private:
     int vp2_;
     PCLVisualizer viewer_;
     int sample_cnt;
+    int traj_cnt_;
 
 public:
 
@@ -61,6 +62,8 @@ public:
     void removeCoordinateSystem();
 
     void visualizeGrid(const grid& grid);
+
+    void addSubmap(const SubmapObj& submap_i);
 };
 
 #endif // UTILS_VISUALIZATION_HPP

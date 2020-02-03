@@ -266,15 +266,13 @@ Eigen::Array3f computeInfoInSubmap(const SubmapObj& submap){
     return cond_num;
 }
 
-SubmapsVec parsePingsAUVlib(std_data::mbes_ping::PingsT& pings){
+SubmapsVec parsePingsAUVlib(std_data::mbes_ping::PingsT& pings, const Eigen::Isometry3d& map_tf){
 
     SubmapsVec pings_subs;
     std::cout << std::fixed;
     std::cout << std::setprecision(10);
 
     // For every .all file
-    int ping_cnt = 0;
-    Isometry3d map_tf;
     Isometry3d submap_tf;
     for (auto pos = pings.begin(); pos != pings.end(); ) {
         auto next = std::find_if(pos, pings.end(), [&](const std_data::mbes_ping& ping) {
@@ -282,8 +280,6 @@ SubmapsVec parsePingsAUVlib(std_data::mbes_ping::PingsT& pings){
         });
         std_data::mbes_ping::PingsT track_pings;
         track_pings.insert(track_pings.end(), pos, next);
-        cout << "found 1 pos!" << endl;
-
         if (pos == next) {
             break;
         }
@@ -292,14 +288,6 @@ SubmapsVec parsePingsAUVlib(std_data::mbes_ping::PingsT& pings){
         Vector3d dir = track_pings.back().pos_ - track_pings.front().pos_;
         Vector3d ang; ang << 0., 0., std::atan2(dir(1), dir(0));
         Eigen::Matrix3d RM = data_transforms::euler_to_matrix(ang(0), ang(1), ang(2));
-
-        // Create map frame on top of first submap frame: avoid losing accuracy on floats
-        if(ping_cnt==0){
-            map_tf.translation() = track_pings.back().pos_;
-            map_tf.linear() = RM;
-            std::cout << "Map tf " << map_tf.translation().transpose() << std::endl;
-        }
-        ping_cnt ++;
 
         // For every ping in the .all file
         for (std_data::mbes_ping& ping : track_pings) {
@@ -363,7 +351,7 @@ SubmapsVec parseSubmapsAUVlib(std_data::pt_submaps& ss){
         // Create map frame on top of first submap frame: avoid losing accuracy on floats
         if(k==0){
             map_tf = submap_tf;
-            std::cout << "Map tf " << map_tf.translation().transpose() << std::endl;
+            std::cout << "Map reference frame " << map_tf.translation().transpose() << std::endl;
         }
         submap.array().rowwise() -= map_tf.translation().transpose().array();
         submap_k.auv_tracks_.array().rowwise() -= map_tf.translation().transpose().array();
@@ -380,13 +368,11 @@ SubmapsVec parseSubmapsAUVlib(std_data::pt_submaps& ss){
     return submaps_set;
 }
 
-MapObj parseMapAUVlib(std_data::pt_submaps& ss){
-
-    std::cout << "Number of submaps " << ss.points.size() << std::endl;
-    double easting = 0;
-    double northing = 0;
+std::tuple<MapObj, Eigen::Isometry3d>parseMapAUVlib(std_data::pt_submaps& ss){
 
     MapObj map_j;
+    Isometry3d map_tf;
+    Isometry3d submap_tf;
     for(unsigned int k=0; k<ss.points.size(); k++){
         // Apply original transform to points and vehicle track
         MatrixXd submap = ss.points.at(k);
@@ -398,32 +384,26 @@ MapObj parseMapAUVlib(std_data::pt_submaps& ss){
         tracks.array().rowwise() += ss.trans.at(k).transpose().array();
         map_j.auv_tracks_ = tracks;
 
-        // Substract translation on E-N coordinates to avoid losing accuracy on floats
+        // Create map frame on top of first submap frame: avoid losing accuracy on floats
         if(k==0){
-            std::cout << "Coord " << submap.row(100)[0] << " , " << submap.row(100)[1] << std::endl;
-            easting = (double)((int)submap.row(100)[0]/1000)*1000;
-            northing = (double)((int)submap.row(100)[1]/1000)*1000;
-            std::cout << "Coord main " << easting << " , " << northing << std::endl;
-
-            // Map tf will be that of the first submap of the survey
+            int mid = (tracks.size() % 2 == 0)? tracks.size()/2: (tracks.size()+1)/2;
             Eigen::Quaterniond rot(ss.rots.at(k));
-            Eigen::Vector3f trans = ss.trans.at(k).cast<float>();
-            map_j.submap_tf_ = Isometry3f (Isometry3f(Translation3f(trans)) *
-                                        Isometry3f(rot.normalized().cast<float>()));
-            map_j.submap_tf_.translation().array() -= Vector3f(easting, northing, 0).transpose().array();
-
+            Eigen::Vector3d trans = ss.trans.at(k);
+            trans(2) = tracks.row(mid)(1);
+            map_tf.translation() = trans;
+            map_tf.linear() = rot.toRotationMatrix();
+            std::cout << "Map reference frame " << map_tf.translation().transpose() << std::endl;
         }
-        submap.array().rowwise() -= Vector3d(easting, northing, 0).transpose().array();
-        map_j.auv_tracks_.array().rowwise() -= Vector3d(easting, northing, 0).transpose().array();
-
+        submap.array().rowwise() -= map_tf.translation().transpose().array();
+        map_j.auv_tracks_.array().rowwise() -= map_tf.translation().transpose().array();
+        
         // Create PCL from PointsT
         for(unsigned int i=0; i<submap.rows(); i++){
-            Eigen::Vector3f p = submap.row(i).cast<float>();
-            map_j.submap_pcl_.points.push_back(PointT(p[0],p[1],p[2]));
+            map_j.submap_pcl_.points.push_back(PointT(submap.row(i)[0],submap.row(i)[1],submap.row(i)[2]));
         }
     }
 
-    return map_j;
+    return std::make_tuple(map_j, map_tf);
 }
 
 void transformSubmapObj(SubmapObj& submap, Eigen::Isometry3f& poseDRt){
