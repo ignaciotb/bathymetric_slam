@@ -19,6 +19,10 @@ make -j4
 make install
 ```
 
+Finally, add the following line to your ~/.bashrc file adapted to your own installation
+```
+export PATH=$PATH:/path/to/folder/bathymetric_slam/install/share
+```
 ### Available apps
 Under `bin` folder.
 The process outputs .png images with the maps of bathymetry and consistency error.
