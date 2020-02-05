@@ -63,7 +63,9 @@ public:
 
     void visualizeGrid(const grid& grid);
 
-    void addSubmap(const SubmapObj& submap_i);
+    void addSubmap(const SubmapObj& submap_i, int vp);
+
+    void plotMBESPing(const SubmapObj& submap_i, float spam, float n_beams, int vp);
 };
 
 #endif // UTILS_VISUALIZATION_HPP

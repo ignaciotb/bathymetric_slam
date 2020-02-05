@@ -97,7 +97,7 @@ void SubmapsVisualizer::updateVisualizer(const SubmapsVec& submaps_set){
     viewer_.spinOnce();
 }
 
-void SubmapsVisualizer::addSubmap(const SubmapObj& submap_i){
+void SubmapsVisualizer::addSubmap(const SubmapObj& submap_i, int vp){
 
     // Add pointclouds
     if(this->traj_cnt_ == NULL){
@@ -106,10 +106,47 @@ void SubmapsVisualizer::addSubmap(const SubmapObj& submap_i){
     PointCloudT::Ptr submap_ptr (new PointCloudT);
     submap_ptr.reset(new PointCloudT(submap_i.submap_pcl_));
     PointCloudColorHandlerCustom<PointT> cloud_color(submap_ptr, submap_i.colors_[0], submap_i.colors_[1], submap_i.colors_[2]);
-    viewer_.addPointCloud(submap_ptr, cloud_color, "cloud_" + std::to_string(this->traj_cnt_), vp1_);
-    viewer_.addCoordinateSystem(3.0, submap_i.submap_tf_, "cloud_" + std::to_string(this->traj_cnt_), vp1_);
-    std::cout << "Adding ping " << this->traj_cnt_ << std::endl;
+    viewer_.addPointCloud(submap_ptr, cloud_color, "cloud_" + std::to_string(this->traj_cnt_), vp);
+    viewer_.addCoordinateSystem(3.0, submap_i.submap_tf_, "cloud_" + std::to_string(this->traj_cnt_), vp);
     this->traj_cnt_++;
+}
+
+void SubmapsVisualizer::plotMBESPing(const SubmapObj& submap_i, float spam, float n_beams, int vp){
+
+    Eigen::Matrix3f rot = submap_i.submap_tf_.linear();
+    Eigen::Quaternionf rot_q = Quaternionf(rot);
+    Eigen::Vector3f z_or = rot.col(2).transpose();
+    std::vector<Eigen::Quaternionf, Eigen::aligned_allocator<Eigen::Quaternionf> > beam_directions;
+
+    float roll_step = spam/n_beams;
+    float pitch = 0.0, yaw = 0.0;
+    Eigen::Quaternionf q;
+    q = Eigen::AngleAxisf(3.1415, Eigen::Vector3f::UnitX())
+        * Eigen::AngleAxisf(pitch, Eigen::Vector3f::UnitY())
+        * Eigen::AngleAxisf(yaw, Eigen::Vector3f::UnitZ());
+
+    rot_q *= q;
+
+    for(int i = -n_beams/2; i<=n_beams/2; i++){
+//          std::cout << "step " << i << " and angle " << roll_step*i << std::endl;
+        q = Eigen::AngleAxisf(roll_step*i, Eigen::Vector3f::UnitX())
+            * Eigen::AngleAxisf(pitch, Eigen::Vector3f::UnitY())
+            * Eigen::AngleAxisf(yaw, Eigen::Vector3f::UnitZ());
+        beam_directions.push_back(Eigen::Quaternionf(rot_q * q));
+        Eigen::Matrix3f rot_mat = (rot_q * q).toRotationMatrix();
+        Eigen::Vector3f z_or = rot_mat.col(2).transpose();
+//          std::cout << "Beams directions " << z_or.transpose() << std::endl;
+
+        pcl::ModelCoefficients line_coeff;
+        line_coeff.values.resize (6);    // We need 6 values
+        line_coeff.values[0] = submap_i.submap_tf_.translation()[0];
+        line_coeff.values[1] = submap_i.submap_tf_.translation()[1];
+        line_coeff.values[2] = submap_i.submap_tf_.translation()[2];
+        line_coeff.values[3] = z_or.x ();
+        line_coeff.values[4] = z_or.y ();
+        line_coeff.values[5] = z_or.z ();
+        viewer_.addLine(line_coeff, "line_" + std::to_string(i), vp);
+    }
 }
 
 
