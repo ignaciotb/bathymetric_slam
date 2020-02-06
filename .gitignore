@@ -20,6 +20,6 @@ install/*
 *.g2o
 
 # Images
-*.png
+#*.png
 
 *.cereal
