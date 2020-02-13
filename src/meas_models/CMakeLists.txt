@@ -21,3 +21,18 @@ target_link_libraries(multibeam_simple PUBLIC
     submaps_tools
     ${PCL_LIBRARIES}
 )
+
+# 'make install' to the correct locations (provided by GNUInstallDirs).
+install(TARGETS multibeam_simple EXPORT MeasModelsConfig
+    ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR})  # This is for Windows
+install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+# This makes the project importable from the install directory
+# Put config file in per-project dir (name MUST match), can also
+# just go into 'cmake'.
+install(EXPORT MeasModelsConfig DESTINATION share/MeasModels/cmake)
+
+# This makes the project importable from the build directory
+export(TARGETS multibeam_simple FILE MeasModelsConfig.cmake)

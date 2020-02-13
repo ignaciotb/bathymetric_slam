@@ -104,6 +104,7 @@ public:
   PointCloudFilt filtered_cloud_;
 
   void initializeVoxelGrid (SubmapObj submap_i){
+      std::cout << "Number of points " << submap_i.submap_pcl_.points.size() << std::endl;
       // initialization set to true
       initialized_ = true;
       // create the voxel grid and store the output cloud
@@ -111,7 +112,7 @@ public:
       *cloud_ptr = submap_i.submap_pcl_;
       this->setInputCloud(cloud_ptr);
       this->filter (filtered_cloud_);
-      PointCloudT filtered = filtered_cloud_;
+//      PointCloudT filtered = filtered_cloud_;
 
       // Get the minimum and maximum bounding box dimensions
       b_min_[0] = (static_cast<float> ( min_b_[0]) * leaf_size_[0]);
@@ -120,7 +121,8 @@ public:
       b_max_[0] = (static_cast<float> ( (max_b_[0]) + 1) * leaf_size_[0]);
       b_max_[1] = (static_cast<float> ( (max_b_[1]) + 1) * leaf_size_[1]);
       b_max_[2] = (static_cast<float> ( (max_b_[2]) + 1) * leaf_size_[2]);
-
+      std::cout << "Minb " << min_b_.transpose() << std::endl;
+      std::cout << "Maxb " << max_b_.transpose() << std::endl;
   }
 
 
@@ -130,10 +132,6 @@ public:
       sensor_origin_ << sensor_tf.translation(), 0.0;
       sensor_orientation_ = Eigen::Quaternionf(sensor_tf.linear());
 
-      Eigen::Matrix3f rot = sensor_orientation_.toRotationMatrix();
-      Eigen::Vector3f z_or = rot.col(2).transpose();
-      std::cout << "Frame origin " << sensor_origin_.transpose() << std::endl;
-      std::cout << "Frame direction " << z_or.transpose() << std::endl;
 
       float roll_step = spam/n_beams;
       float pitch = 0.0, yaw = 0.0;
@@ -143,6 +141,9 @@ public:
           * Eigen::AngleAxisf(yaw, Eigen::Vector3f::UnitZ());
 
       sensor_orientation_ *= q_180;
+      Eigen::Vector3f z_or = sensor_orientation_.toRotationMatrix().col(2);
+      std::cout << "Frame origin " << sensor_origin_.transpose() << std::endl;
+      std::cout << "Frame direction " << z_or.transpose() << std::endl;
 
       // TODO: n_beams needs to be odd!
 
@@ -159,30 +160,27 @@ public:
 
   }
 
-  int pingComputation (PointCloudT& ping_pcl, std::vector<int>& idxs){
+  int pingComputation (PointCloudT& ping_pcl){
     if (!initialized_){
         PCL_ERROR ("Voxel grid not initialized; call initializeVoxelGrid () first! \n");
         return -1;
     }
 
-    Eigen::Matrix3f rot = sensor_orientation_.toRotationMatrix();
-    Eigen::Vector3f z_or = rot.col(2).transpose();
-//    std::cout << "Sensor direction " << z_or.transpose() << std::endl;
+//    Eigen::Matrix3f rot = sensor_orientation_.toRotationMatrix();
+//    Eigen::Vector3f z_or = rot.col(2).transpose();
     Eigen::Vector4f direction;
-    std::cout << "Minb " << min_b_.transpose() << std::endl;
-    std::cout << "Maxb " << max_b_.transpose() << std::endl;
 
     // Check every beam
     for(Eigen::Quaternionf beam_n: beam_directions_){
         Eigen::Matrix3f rot_beam = beam_n.toRotationMatrix();
         direction << rot_beam.col(2), 0.0;
-        std::cout << "Beam direction " << direction.transpose() << std::endl;
+//        std::cout << "Beam direction " << direction.transpose() << std::endl;
         direction.normalize ();
         // Estimate entry point into the voxel grid
         float tmin = rayBoxIntersection(sensor_origin_, direction);
-        std::cout << "tmin " << tmin << std::endl;
+//        std::cout << "tmin " << tmin << std::endl;
         if (tmin != -1){
-            float z_max = 30;
+            float z_max = 300;
             for(float z=0; z<z_max; z+=0.01){
                 // coordinate of the boundary of the voxel grid
                 Eigen::Vector4f start = sensor_origin_ + (tmin+z) * direction;
@@ -197,12 +195,9 @@ public:
                 int index = this->getCentroidIndexAt (ijk);
 //                std::cout << "Occupied? " << index << std::endl;
                 if (index != -1){
-    //              int state = rayTraversal (ijk, sensor_origin_, direction, tmin);
-
-    //              std::cout << "tmin " << tmin << std::endl;
+//                    std::cout << "tmin " << tmin << std::endl;
                     ping_pcl.points.push_back(PointT(voxel_max[0], voxel_max[1], voxel_max[2]));
-                    idxs.push_back(index);
-                    std::cout << "Voxel hit! " << voxel_max.transpose() << std::endl;
+//                    std::cout << "Voxel hit! " << voxel_max.transpose() << std::endl;
                     break;
                 }
             }

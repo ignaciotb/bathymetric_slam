@@ -90,7 +90,7 @@ int main(int argc, char** argv){
         PointCloudT::Ptr cloud_ptr (new PointCloudT);
         pcl::UniformSampling<PointT> us_filter;
         us_filter.setInputCloud (cloud_ptr);
-        us_filter.setRadiusSearch(0.1);   // 1 for Borno, 2 for Antarctica
+        us_filter.setRadiusSearch(1);   // 1 for Borno, 2 for Antarctica
         for(SubmapObj& submap_i: map_gt){
     //        std::cout << "before " << submap_i.submap_pcl_.size() << std::endl;
             *cloud_ptr = submap_i.submap_pcl_;
@@ -112,13 +112,13 @@ int main(int argc, char** argv){
 
     // Create voxel grid
     MultibeamSensor<PointT> vox_oc;
-    vox_oc.setLeafSize(0.1,0.1,0.1);
+    vox_oc.setLeafSize(1,1,1);
     vox_oc.initializeVoxelGrid(map_gt.at(0));
 
     // Plot localization trajectory
     std::cout << "Number of pings " << traj_gt.size() << std::endl;
 //    std::vector<Eigen::Vector3i, Eigen::aligned_allocator<Eigen::Vector3i> > occluded_voxels;
-    std::vector<int> idxs;
+//    std::vector<int> idxs;
     PointCloudT ping_i;
     for(int j=0; j<traj_gt.size(); j=j+50){
 //    for(SubmapObj& submap_i: traj_gt){
@@ -130,10 +130,10 @@ int main(int argc, char** argv){
 //        visualizer->plotMBESPing(submap_i, 2.0944, 256, 2);
 
         // Compute simulated ping
-        vox_oc.createMBES(2.0944, 256, submap_i.submap_tf_);
+        vox_oc.createMBES(1.74/2, 3, submap_i.submap_tf_);
         ping_i.clear();
-        vox_oc.pingComputation(ping_i, idxs);
-        PointCloudT pcl_filtered = vox_oc.getFilteredPointCloud();
+        vox_oc.pingComputation(ping_i);
+//        PointCloudT pcl_filtered = vox_oc.getFilteredPointCloud();
 
         SubmapObj simulated_ping;
         simulated_ping.submap_tf_ = submap_i.submap_tf_;
