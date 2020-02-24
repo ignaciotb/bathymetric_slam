@@ -158,7 +158,7 @@ int SolveOptimizationProblem(ceres::Problem* problem) {
     CHECK(problem != NULL);
 
     ceres::Solver::Options options;
-    options.max_num_iterations = 300;
+    options.max_num_iterations = 0;
     options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
 //    options.linear_solver_type = ceres::DENSE_NORMAL_CHOLESKY;
 //    options.linear_solver_type = ceres::SPARSE_SCHUR;

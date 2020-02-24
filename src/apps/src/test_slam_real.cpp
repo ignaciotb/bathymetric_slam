@@ -102,6 +102,19 @@ int main(int argc, char** argv){
 //        }
     }
 
+
+    // Survey distance
+    float dist = 0;
+    int i = 0;
+    for(SubmapObj& submap_i: submaps_gt){
+        i++;
+        if(i==submaps_gt.size()){
+            break;
+        }
+        dist += (submap_i.submap_tf_.translation() - submaps_gt.at(i).submap_tf_.translation()).norm();
+    }
+    std::cout << "Trajectory (m) " << dist << std::endl;
+
     // Read training covs from folder
     covs covs_lc;
     std::string results_path;
