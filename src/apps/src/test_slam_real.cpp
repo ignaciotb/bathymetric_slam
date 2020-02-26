@@ -92,14 +92,14 @@ int main(int argc, char** argv){
         pcl::UniformSampling<PointT> us_filter;
         us_filter.setInputCloud (cloud_ptr);
         us_filter.setRadiusSearch(1);   // 1 for Borno, 2 for Antarctica
-//        for(SubmapObj& submap_i: submaps_gt){
-//    //        std::cout << "before " << submap_i.submap_pcl_.size() << std::endl;
-//            *cloud_ptr = submap_i.submap_pcl_;
-//            us_filter.setInputCloud(cloud_ptr);
-//            us_filter.filter(*cloud_ptr);
-//            submap_i.submap_pcl_ = *cloud_ptr;
-//    //        std::cout << submap_i.submap_pcl_.size() << std::endl;
-//        }
+        for(SubmapObj& submap_i: submaps_gt){
+    //        std::cout << "before " << submap_i.submap_pcl_.size() << std::endl;
+            *cloud_ptr = submap_i.submap_pcl_;
+            us_filter.setInputCloud(cloud_ptr);
+            us_filter.filter(*cloud_ptr);
+            submap_i.submap_pcl_ = *cloud_ptr;
+    //        std::cout << submap_i.submap_pcl_.size() << std::endl;
+        }
     }
 
 
@@ -150,14 +150,12 @@ int main(int argc, char** argv){
     // Visualization
 #if VISUAL == 1
     PCLVisualizer viewer ("Submaps viewer");
-    viewer.loadCameraParameters("Antarctica7");
     SubmapsVisualizer* visualizer = new SubmapsVisualizer(viewer);
     visualizer->setVisualizer(submaps_gt, 1);
     while(!viewer.wasStopped ()){
         viewer.spinOnce ();
     }
     viewer.resetStoppedFlag();
-//    viewer.saveCameraParameters("Antarctica7");
 #endif
 
     // GICP reg for submaps
