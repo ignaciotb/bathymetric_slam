@@ -88,9 +88,46 @@ bool SubmapRegistration::gicpSubmapRegistration(SubmapObj& trg_submap, SubmapObj
     PointCloudT::Ptr src_pcl_ptr (new PointCloudT(src_submap.submap_pcl_));
     PointCloudT::Ptr trg_pcl_ptr (new PointCloudT(trg_submap.submap_pcl_));
 
+    // Compute GICP covs externally
+    pcl::NormalEstimation<PointT, pcl::Normal> ne;
+    pcl::search::KdTree<PointT>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ> ());
+    ne.setSearchMethod(tree);
+    ne.setRadiusSearch(10);
+
+    pcl::PointCloud<pcl::Normal>::Ptr normals_src(new pcl::PointCloud<pcl::Normal>);
+    ne.setInputCloud(src_pcl_ptr);
+    ne.compute(*normals_src);
+
+    CovsVec covs_src;
+    CovsVecPtr covs_src_ptr;
+    pcl::features::computeApproximateCovariances(*src_pcl_ptr, *normals_src, covs_src);
+    covs_src_ptr.reset(new CovsVec(covs_src));
+
+    // Compute GICP vanially information matrix
+    src_submap.submap_lc_info_.setZero();
+    Eigen::VectorXd info_diag(4);
+    info_diag << 10000.0, 10000.0, 10000.0, 1000.0;
+    src_submap.submap_lc_info_.bottomRightCorner(4,4) = info_diag.asDiagonal();
+
+    Eigen::Matrix3d vanilla_info;
+    vanilla_info.setZero();
+    for(unsigned int n=0; n<covs_src_ptr->size(); n++){
+        vanilla_info += covs_src_ptr->at(n);
+    }
+    vanilla_info /= (covs_src_ptr->size());
+    src_submap.submap_lc_info_.topLeftCorner(2,2) = vanilla_info.topLeftCorner(2,2).inverse();
+
+    for(int x=0; x<src_submap.submap_lc_info_.array().size(); x++){
+        if(isnan(src_submap.submap_lc_info_.array()(x))){
+            throw std::runtime_error("Non positive semi-definite CoV");
+            std::exit(0);
+        }
+    }
+
     // The Iterative Closest Point algorithm
     gicp_.setInputSource(src_pcl_ptr);
     gicp_.setInputTarget(trg_pcl_ptr);
+    gicp_.setSourceCovariances(covs_src_ptr);
     gicp_.align (src_submap.submap_pcl_);
 
     // Apply transform to submap

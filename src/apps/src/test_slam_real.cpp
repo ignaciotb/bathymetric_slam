@@ -36,7 +36,7 @@
 #include "bathy_slam/bathy_slam.hpp"
 
 #define INTERACTIVE 0
-#define VISUAL 1
+#define VISUAL 0
 
 using namespace Eigen;
 using namespace std;
@@ -45,6 +45,7 @@ using namespace g2o;
 int main(int argc, char** argv){
 
     // Inputs
+    std::cout << "------------------------------------------------------------" << std::endl;
     std::string folder_str, path_str, output_str, original, simulation, const_cov, mc_method;
     cxxopts::Options options("MyProgram", "One line description of MyProgram");
     options.add_options()
@@ -163,6 +164,7 @@ int main(int argc, char** argv){
 
     // Graph constructor
     GraphConstructor graph_obj(covs_lc);
+    graph_obj.edge_covs_type_ = 2;
 
     // Noise generators
     GaussianGen transSampler, rotSampler;
@@ -177,6 +179,7 @@ int main(int argc, char** argv){
 //    viewer.resetStoppedFlag();
 
     // Create SLAM solver and run offline
+    std::cout << "Running graph SLAM " << std::endl;
     BathySlam slam_solver(graph_obj, gicp_reg);
     SubmapsVec submaps_reg = slam_solver.runOffline(submaps_gt, transSampler, rotSampler);
 
@@ -261,7 +264,6 @@ int main(int argc, char** argv){
     std::string command_str = "./plot_results.py --initial_poses poses_original.txt "
                               "--corrupted_poses poses_corrupted.txt --optimized_poses poses_optimized.txt "
                               "--output_file " + results_path;
-    std::cout << "Results to " << results_path << std::endl;
 
     const char *command = command_str.c_str();
     system(command);

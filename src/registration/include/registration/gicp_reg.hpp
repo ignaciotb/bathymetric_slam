@@ -12,15 +12,23 @@
 #ifndef GICP_REG_HPP
 #define GICP_REG_HPP
 
+#include <math.h>
 #include <eigen3/Eigen/Core>
+
 #include <pcl/registration/gicp.h>
 #include <pcl/registration/warp_point_rigid.h>
 #include <pcl/registration/warp_point_rigid_3d.h>
 #include <pcl/registration/transformation_estimation_lm.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/search/impl/search.hpp>
+#include <pcl/features/from_meshes.h>
 
 #include "submaps_tools/submaps.hpp"
 
 #include "data_tools/benchmark.h"
+
+typedef std::vector<Eigen::Matrix3d, Eigen::aligned_allocator<Eigen::Matrix3d> > CovsVec;
+typedef boost::shared_ptr <CovsVec > CovsVecPtr;
 
 class SubmapRegistration {
 

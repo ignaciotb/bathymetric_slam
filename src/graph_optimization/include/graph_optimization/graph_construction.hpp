@@ -45,6 +45,7 @@ public:
     tf_vec drMeas_;
     tf_vec lcMeas_;
     tf_vec drChain_;
+    int edge_covs_type_;
 
     GraphConstructor(std::vector<Eigen::Matrix2d, Eigen::aligned_allocator<Eigen::Matrix2d> > covs_lc);
 

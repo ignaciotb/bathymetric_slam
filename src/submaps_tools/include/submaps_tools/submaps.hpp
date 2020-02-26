@@ -45,6 +45,7 @@ public:
     Eigen::Vector3d colors_;
     Eigen::Isometry3f submap_tf_;
     Eigen::Matrix<double,6,6> submap_info_;
+    Eigen::Matrix<double,6,6> submap_lc_info_;
     Eigen::MatrixXd auv_tracks_;
 
     SubmapObj();
