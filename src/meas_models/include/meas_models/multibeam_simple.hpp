@@ -145,17 +145,11 @@ public:
       std::cout << "Frame origin " << sensor_origin_.transpose() << std::endl;
       std::cout << "Frame direction " << z_or.transpose() << std::endl;
 
-      // TODO: n_beams needs to be odd!
-
       for(int i = -n_beams/2; i<=n_beams/2; i++){
-//          std::cout << "step " << i << " and angle " << roll_step*i << std::endl;
           Eigen::Quaternionf q = Eigen::AngleAxisf(roll_step*i, Eigen::Vector3f::UnitX())
                                   * Eigen::AngleAxisf(pitch, Eigen::Vector3f::UnitY())
                                   * Eigen::AngleAxisf(yaw, Eigen::Vector3f::UnitZ());
           beam_directions_.push_back(Eigen::Quaternionf(sensor_orientation_ * q));
-//          Eigen::Matrix3f rot_mat = (sensor_orientation_ * q).toRotationMatrix();
-//          Eigen::Vector3f z_or = rot_mat.col(2).transpose();
-//          std::cout << "Beams directions " << z_or.transpose() << std::endl;
       }
 
   }
@@ -165,20 +159,15 @@ public:
         PCL_ERROR ("Voxel grid not initialized; call initializeVoxelGrid () first! \n");
         return -1;
     }
-
-//    Eigen::Matrix3f rot = sensor_orientation_.toRotationMatrix();
-//    Eigen::Vector3f z_or = rot.col(2).transpose();
     Eigen::Vector4f direction;
 
     // Check every beam
     for(Eigen::Quaternionf beam_n: beam_directions_){
         Eigen::Matrix3f rot_beam = beam_n.toRotationMatrix();
         direction << rot_beam.col(2), 0.0;
-//        std::cout << "Beam direction " << direction.transpose() << std::endl;
         direction.normalize ();
         // Estimate entry point into the voxel grid
         float tmin = rayBoxIntersection(sensor_origin_, direction);
-//        std::cout << "tmin " << tmin << std::endl;
         if (tmin != -1){
             float z_max = 300;
             for(float z=0; z<z_max; z+=0.01){
@@ -186,18 +175,12 @@ public:
                 Eigen::Vector4f start = sensor_origin_ + (tmin+z) * direction;
                 // i,j,k coordinate of the voxel were the ray enters the voxel grid
                 Eigen::Vector3i ijk = getGridCoordinatesRound (start[0], start[1], start[2]);
-//                std::cout << "ijk " << ijk.transpose() << std::endl;
                 // centroid coordinate of the entry voxel
                 Eigen::Vector4f voxel_max = getCentroidCoordinate (ijk);
-//                std::cout << "Centroid " << voxel_max.transpose() << std::endl;
-
                 // if voxel is occluded
                 int index = this->getCentroidIndexAt (ijk);
-//                std::cout << "Occupied? " << index << std::endl;
                 if (index != -1){
-//                    std::cout << "tmin " << tmin << std::endl;
                     ping_pcl.points.push_back(PointT(voxel_max[0], voxel_max[1], voxel_max[2]));
-//                    std::cout << "Voxel hit! " << voxel_max.transpose() << std::endl;
                     break;
                 }
             }
