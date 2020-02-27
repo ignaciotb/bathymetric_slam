@@ -92,7 +92,7 @@ bool SubmapRegistration::gicpSubmapRegistration(SubmapObj& trg_submap, SubmapObj
     pcl::NormalEstimation<PointT, pcl::Normal> ne;
     pcl::search::KdTree<PointT>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ> ());
     ne.setSearchMethod(tree);
-    ne.setRadiusSearch(10);
+    ne.setRadiusSearch(30);
 
     pcl::PointCloud<pcl::Normal>::Ptr normals_src(new pcl::PointCloud<pcl::Normal>);
     ne.setInputCloud(src_pcl_ptr);
@@ -103,7 +103,7 @@ bool SubmapRegistration::gicpSubmapRegistration(SubmapObj& trg_submap, SubmapObj
     pcl::features::computeApproximateCovariances(*src_pcl_ptr, *normals_src, covs_src);
     covs_src_ptr.reset(new CovsVec(covs_src));
 
-    // Compute GICP vanially information matrix
+    // Compute GICP vanilla information matrix
     src_submap.submap_lc_info_.setZero();
     Eigen::VectorXd info_diag(4);
     info_diag << 10000.0, 10000.0, 10000.0, 1000.0;
@@ -116,10 +116,11 @@ bool SubmapRegistration::gicpSubmapRegistration(SubmapObj& trg_submap, SubmapObj
     }
     vanilla_info /= (covs_src_ptr->size());
     src_submap.submap_lc_info_.topLeftCorner(2,2) = vanilla_info.topLeftCorner(2,2).inverse();
+//    std::cout << vanilla_info.topLeftCorner(3,3) << std::endl;
 
     for(int x=0; x<src_submap.submap_lc_info_.array().size(); x++){
         if(isnan(src_submap.submap_lc_info_.array()(x))){
-            throw std::runtime_error("Non positive semi-definite CoV");
+            throw std::runtime_error("Nan components in the matrix");
             std::exit(0);
         }
     }

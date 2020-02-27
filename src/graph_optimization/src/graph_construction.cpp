@@ -117,13 +117,10 @@ void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapOb
 
     // Check resulting COV is positive semi-definite
     Eigen::LLT<Eigen::MatrixXd> lltOfA(information);
-    if(lltOfA.info() == Eigen::NumericalIssue){
-        throw std::runtime_error("Non positive semi-definite CoV");
-        std::exit(0);
+    if(lltOfA.info() != Eigen::NumericalIssue){
+        lcEdges_.push_back(e);
+        lcMeas_.push_back(t);
     }
-
-    lcEdges_.push_back(e);
-    lcMeas_.push_back(t);
 }
 
 

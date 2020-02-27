@@ -46,10 +46,11 @@ int main(int argc, char** argv){
 
     // Inputs
     std::cout << "------------------------------------------------------------" << std::endl;
-    std::string folder_str, path_str, output_str, original, simulation, const_cov, mc_method;
+    std::string folder_str, path_str, output_str, original, simulation, const_cov, mc_method, method;
     cxxopts::Options options("MyProgram", "One line description of MyProgram");
     options.add_options()
         ("help", "Print help")
+        ("method", "Monte Carlo covs", cxxopts::value(method))
         ("covs_folder", "Input covs folder", cxxopts::value(folder_str))
         ("output_cereal", "Output graph cereal", cxxopts::value(output_str))
         ("original", "Disturb original trajectory", cxxopts::value(original))
@@ -92,7 +93,7 @@ int main(int argc, char** argv){
         PointCloudT::Ptr cloud_ptr (new PointCloudT);
         pcl::UniformSampling<PointT> us_filter;
         us_filter.setInputCloud (cloud_ptr);
-        us_filter.setRadiusSearch(1);   // 1 for Borno, 2 for Antarctica
+        us_filter.setRadiusSearch(2);   // 1 for Borno, 2 for Antarctica
         for(SubmapObj& submap_i: submaps_gt){
     //        std::cout << "before " << submap_i.submap_pcl_.size() << std::endl;
             *cloud_ptr = submap_i.submap_pcl_;
@@ -102,7 +103,6 @@ int main(int argc, char** argv){
     //        std::cout << submap_i.submap_pcl_.size() << std::endl;
         }
     }
-
 
     // Survey distance
     float dist = 0;
@@ -164,7 +164,7 @@ int main(int argc, char** argv){
 
     // Graph constructor
     GraphConstructor graph_obj(covs_lc);
-    graph_obj.edge_covs_type_ = 2;
+    graph_obj.edge_covs_type_ = std::stoi(method);
 
     // Noise generators
     GaussianGen transSampler, rotSampler;
