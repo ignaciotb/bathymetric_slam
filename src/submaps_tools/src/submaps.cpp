@@ -301,18 +301,12 @@ SubmapsVec parsePingsAUVlib(std_data::mbes_ping::PingsT& pings, const Eigen::Iso
 //            std::cout << "Ping width " << dir.transpose() << std::endl;
 
             ang << ping.roll_, ping.pitch_, 0;
-            ang *= M_PI/180.0;
             Eigen::Vector3f beam_middle = ping_sub.submap_pcl_.points.at(125).getArray3fMap();
             pitch =  ping_sub.submap_tf_.translation().cast<float>() - beam_middle;
-//            ang[1] = -M_PI/10.0; //std::atan2(pitch(0), pitch(2));
             ang[2] = std::atan2(dir(1), dir(0)) + M_PI/2.0;
-//            std::cout << "Orientation " << ang.transpose() << std::endl;
             RM = data_transforms::euler_to_matrix(ang(0), ang(1), ang(2));
             ping_sub.submap_tf_.linear() = RM.cast<float>();
-//            std::cout << "Altitude " << pitch(2) << std::endl;
-
             pings_subs.push_back(ping_sub);
-//            return pings_subs;
         }
         pos = next;
     }
