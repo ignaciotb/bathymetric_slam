@@ -170,7 +170,7 @@ public:
         float tmin = rayBoxIntersection(sensor_origin_, direction);
         if (tmin != -1){
             float z_max = 300;
-            for(float z=0; z<z_max; z+=0.01){
+            for(float z=0; z<z_max; z+=1){
                 // coordinate of the boundary of the voxel grid
                 Eigen::Vector4f start = sensor_origin_ + (tmin+z) * direction;
                 // i,j,k coordinate of the voxel were the ray enters the voxel grid
