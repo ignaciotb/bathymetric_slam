@@ -3,7 +3,22 @@
 Baseline SLAM framework for underwater vehicles.
 The algorithm gets a set of bathymetric submaps as input and corrects the global map constructed while refining the vehicle trajectory through a map-to-map registration followed by a pose graph optimization. 
 
+
 ![real_data_example](https://github.com/ignaciotb/bathymetric_slam/blob/master/img/graph_borno.png)
+
+
+## Paper introducing the method
+The method implemented is described [in this paper](https://ieeexplore.ieee.org/abstract/document/8968241)
+```
+@inproceedings{torroba2019towards,
+  title={Towards Autonomous Industrial-Scale Bathymetric Surveying},
+  author={Torroba, Ignacio and Bore, Nils and Folkesson, John},
+  booktitle={2019 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
+  pages={6377--6382},
+  year={2019},
+  organization={IEEE}
+}
+```
 
 ## Dependencies (tested on Ubuntu 16.04 and 18.04)
 * AUVLIB [here](https://github.com/nilsbore/auvlib) 
