@@ -142,8 +142,8 @@ public:
 
       sensor_orientation_ *= q_180;
       Eigen::Vector3f z_or = sensor_orientation_.toRotationMatrix().col(2);
-      std::cout << "Frame origin " << sensor_origin_.transpose() << std::endl;
-      std::cout << "Frame direction " << z_or.transpose() << std::endl;
+//      std::cout << "Frame origin " << sensor_origin_.transpose() << std::endl;
+//      std::cout << "Frame direction " << z_or.transpose() << std::endl;
 
       for(int i = -n_beams/2; i<=n_beams/2; i++){
           Eigen::Quaternionf q = Eigen::AngleAxisf(roll_step*i, Eigen::Vector3f::UnitX())
