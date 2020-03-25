@@ -77,7 +77,7 @@ int main(int argc, char** argv){
 
             std_data::mbes_ping::PingsT std_pings = std_data::read_data<std_data::mbes_ping::PingsT>(auv_path);
             std::cout << "Number of pings " << std_pings.size() << std::endl;
-            traj_gt = parsePingsAUVlib(std_pings, map_tf);
+            traj_gt = parsePingsAUVlib(std_pings);
         }
         else{
             std::ifstream is(boost::filesystem::basename(map_path) + ".cereal", std::ifstream::binary);

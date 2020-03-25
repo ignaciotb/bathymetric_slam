@@ -266,7 +266,7 @@ Eigen::Array3f computeInfoInSubmap(const SubmapObj& submap){
     return cond_num;
 }
 
-SubmapsVec parsePingsAUVlib(std_data::mbes_ping::PingsT& pings, const Eigen::Isometry3d& map_tf){
+SubmapsVec parsePingsAUVlib(std_data::mbes_ping::PingsT& pings){
 
     SubmapsVec pings_subs;
     std::cout << std::fixed;
@@ -274,7 +274,8 @@ SubmapsVec parsePingsAUVlib(std_data::mbes_ping::PingsT& pings, const Eigen::Iso
 
     // For every .all file
     Isometry3d submap_tf;
-    int cnt = 0;
+    Isometry3d world_map_tf;
+    int ping_cnt = 0;
     for (auto pos = pings.begin(); pos != pings.end(); ) {
         auto next = std::find_if(pos, pings.end(), [&](const std_data::mbes_ping& ping) {
             return ping.first_in_file_ && (&ping != &(*pos));
@@ -286,35 +287,41 @@ SubmapsVec parsePingsAUVlib(std_data::mbes_ping::PingsT& pings, const Eigen::Iso
             break;
         }
 
-        // get the direction of the submap as the mean direction
         Vector3d ang;
         Vector3f pitch;
         Eigen::Matrix3d RM;
 
-        int ping_cnt =0;
         // For every ping in the .all file
         for (std_data::mbes_ping& ping : track_pings) {
-            ping_cnt ++;
+            if(ping_cnt == 0){
+                ang << ping.roll_, ping.pitch_, 0;
+                Vector3d dir = ping.beams.back() - ping.beams.front();
+                ang[2] = std::atan2(dir(1), dir(0)) + M_PI/2.0;
+                RM = data_transforms::euler_to_matrix(ang(0), ang(1), ang(2));
+                world_map_tf.translation() = ping.pos_;
+                world_map_tf.linear() = RM;
+                std::cout << "Map reference frame " << world_map_tf.translation().transpose() << std::endl;
+            }
+
             SubmapObj ping_sub;
-            int beam_cnt = 0;
             for (Vector3d& p : ping.beams) {
-                if(ping.beams.size()< 130){
-                    beam_cnt++;
-                }
-                p -= map_tf.translation();
+                p = world_map_tf.linear().transpose() * p
+                        - world_map_tf.linear().transpose() * world_map_tf.translation();
                 ping_sub.submap_pcl_.points.push_back(PointT(p.x(), p.y(), p.z()));
             }
-            ping_sub.submap_tf_.translation() = (ping.pos_- map_tf.translation()).cast<float>();
-            Vector3d dir = ping.beams.back() - ping.beams.front();
+            ping_sub.submap_tf_.translation() = (world_map_tf.linear().transpose()
+                                                 * ping.pos_- world_map_tf.linear().transpose()
+                                                 * world_map_tf.translation()).cast<float>();
 
             ang << ping.roll_, ping.pitch_, 0;
+            Vector3d dir = ping.beams.back() - ping.beams.front();
             ang[2] = std::atan2(dir(1), dir(0)) + M_PI/2.0;
             RM = data_transforms::euler_to_matrix(ang(0), ang(1), ang(2));
-            ping_sub.submap_tf_.linear() = RM.cast<float>();
+            ping_sub.submap_tf_.linear() = (RM).cast<float>();
             pings_subs.push_back(ping_sub);
+            ping_cnt++;
         }
         pos = next;
-        cnt++;
     }
     return pings_subs;
 }
