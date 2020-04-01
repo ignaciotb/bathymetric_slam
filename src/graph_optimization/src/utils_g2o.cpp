@@ -45,14 +45,14 @@ Matrix<double, 6,6> generateGaussianNoise(GaussianGen& transSampler,
     transSampler.setDistribution(transNoise);
     rotSampler.setDistribution(rotNoise);
 
-//    if (randomSeed) {
-//      std::random_device r;
-//      std::seed_seq seedSeq{r(), r(), r(), r(), r()};
-//      vector<int> seeds(2);
-//      seedSeq.generate(seeds.begin(), seeds.end());
-//      transSampler.seed(seeds[0]);
-//      rotSampler.seed(seeds[1]);
-//    }
+    if (randomSeed) {
+      std::random_device r;
+      std::seed_seq seedSeq{r(), r(), r(), r(), r()};
+      vector<int> seeds(2);
+      seedSeq.generate(seeds.begin(), seeds.end());
+      transSampler.seed(seeds[0]);
+      rotSampler.seed(seeds[1]);
+    }
     return information;
 }
 
@@ -122,7 +122,7 @@ void addNoiseToMap(GaussianGen& transSampler,
         std::normal_distribution<> d{0,0.5};
 
         // Bias in yaw
-        float roll = 0.0, pitch = 0.0, yaw = 0.5 /*d(gen)*/;
+        float roll = 0.0, pitch = 0.0, yaw = /*0.5*/ d(gen);
         Matrix3f m;
         m = AngleAxisf(roll, Vector3f::UnitX())
             * AngleAxisf(pitch, Vector3f::UnitY())

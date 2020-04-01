@@ -40,21 +40,6 @@ target_link_libraries(test_slam_submaps
    slam_solver
 )
 
-add_executable(test_meas
-       src/test_meas.cpp
-)
-
-target_link_libraries(test_meas
-   gicp_registration
-   utils_g2o
-   submaps_tools
-   read_g2o
-   data_transforms
-   std_data
-   multibeam_simple
-   ${PCL_LIBRARIES}
-   )
-
 add_executable(read_auv_data
        src/read_auv_data.cpp
 )

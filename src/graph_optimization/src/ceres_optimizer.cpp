@@ -154,7 +154,7 @@ void BuildOptimizationProblem(const VectorOfConstraints& constraints,
 }
 
 // Returns true if the solve was successful.
-bool SolveOptimizationProblem(ceres::Problem* problem) {
+int SolveOptimizationProblem(ceres::Problem* problem) {
     CHECK(problem != NULL);
 
     ceres::Solver::Options options;
@@ -176,7 +176,8 @@ bool SolveOptimizationProblem(ceres::Problem* problem) {
     ceres::Solve(options, problem, &summary);
 //    std::cout << summary.FullReport() << '\n';
 
-    return summary.IsSolutionUsable();
+
+    return summary.iterations.size();
 }
 
 // Output the poses to the file with format: id x y z q_x q_y q_z q_w.
@@ -221,8 +222,8 @@ MapOfPoses ceresSolver(const std::string& outFilename, const int drConstraints){
 
     std::cout << "Ceres problem built" << std::endl;
 
-    CHECK(ceres::optimizer::SolveOptimizationProblem(&problem))
-        << "The solve was not successful, exiting.";
+    int iterations = ceres::optimizer::SolveOptimizationProblem(&problem);
+//        << "The solve was not successful, exiting.";
 
     CHECK(ceres::optimizer::OutputPoses("poses_optimized.txt", poses))
         << "Error outputting to poses_optimized.txt";

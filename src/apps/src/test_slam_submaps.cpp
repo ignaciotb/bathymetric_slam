@@ -33,6 +33,8 @@
 
 #include "bathy_slam/bathy_slam.hpp"
 
+#include <pcl/filters/uniform_sampling.h>
+
 #define INTERACTIVE 0
 #define VISUAL 1
 
@@ -43,15 +45,13 @@ using namespace g2o;
 int main(int argc, char** argv){
 
     // Inputs
-    std::string folder_str, path_str, output_str, original, simulation;
+    std::string folder_str, path_str, output_str, original, simulation, method;
     cxxopts::Options options("MyProgram", "One line description of MyProgram");
     options.add_options()
         ("help", "Print help")
-        ("covs_folder", "Input covs folder", cxxopts::value(folder_str))
-        ("output_cereal", "Output graph cereal", cxxopts::value(output_str))
-        ("original", "Disturb original trajectory", cxxopts::value(original))
+        ("method", "Method for generation of GICP covariances. Defaults to 2", cxxopts::value(method))
         ("simulation", "Simulation data from Gazebo", cxxopts::value(simulation))
-        ("slam_cereal", "Input ceres file", cxxopts::value(path_str));
+        ("slam_cereal", "Input MBES pings in ceres file", cxxopts::value(path_str));
 
     auto result = options.parse(argc, argv);
     if (result.count("help")) {
@@ -119,6 +119,7 @@ int main(int argc, char** argv){
 
     // Graph constructor
     GraphConstructor graph_obj(covs_lc);
+    graph_obj.edge_covs_type_ = std::stoi(method);
 
     // Noise generators
     GaussianGen transSampler, rotSampler;

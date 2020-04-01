@@ -17,6 +17,8 @@
 #include <boost/filesystem.hpp>
 #include <cereal/archives/binary.hpp>
 
+#include <pcl/filters/uniform_sampling.h>
+
 #include "data_tools/std_data.h"
 #include "data_tools/benchmark.h"
 
@@ -43,14 +45,18 @@ using namespace g2o;
 int main(int argc, char** argv){
 
     // Inputs
-    std::string folder_str, path_str, output_str, original, simulation;
+    std::cout << "------------------------------------------------------------" << std::endl;
+    std::string folder_str, path_str, output_str, original, simulation, const_cov, mc_method, method;
     cxxopts::Options options("MyProgram", "One line description of MyProgram");
     options.add_options()
         ("help", "Print help")
+        ("method", "Monte Carlo covs", cxxopts::value(method))
         ("covs_folder", "Input covs folder", cxxopts::value(folder_str))
         ("output_cereal", "Output graph cereal", cxxopts::value(output_str))
         ("original", "Disturb original trajectory", cxxopts::value(original))
         ("simulation", "Simulation data from Gazebo", cxxopts::value(simulation))
+        ("const_cov", "Constant covariance value", cxxopts::value(const_cov))
+        ("mc", "Monte Carlo covs", cxxopts::value(mc_method))
         ("slam_cereal", "Input ceres file", cxxopts::value(path_str));
 
     auto result = options.parse(argc, argv);
@@ -97,14 +103,31 @@ int main(int argc, char** argv){
     //        std::cout << submap_i.submap_pcl_.size() << std::endl;
         }
     }
-
     std::cout << "Number of submaps " << submaps_gt.size() << std::endl;
 
     // Read training covs from folder
     covs covs_lc;
+    std::string results_path;
     boost::filesystem::path folder(folder_str);
     if(boost::filesystem::is_directory(folder)) {
         covs_lc = readCovsFromFiles(folder);
+        if(mc_method == "yes"){
+            results_path = "results_mc.txt";
+        }
+        else{
+            results_path = "results_nn.txt";
+        }
+        std::cout << "Results to " << results_path << std::endl;
+    }
+    else{
+        if(const_cov.empty()){
+            std::cout << "Input a covariance value for the optimization" << std::endl;
+            exit(0);
+        }
+        Eigen::Vector2d diag;
+        diag << std::stod(const_cov), std::stod(const_cov);
+        covs_lc.push_back(diag.asDiagonal());
+        results_path = "results_" + const_cov + ".txt";
     }
 
     // Benchmark GT
@@ -117,14 +140,12 @@ int main(int argc, char** argv){
     // Visualization
 #if VISUAL == 1
     PCLVisualizer viewer ("Submaps viewer");
-    viewer.loadCameraParameters("Antarctica7");
     SubmapsVisualizer* visualizer = new SubmapsVisualizer(viewer);
     visualizer->setVisualizer(submaps_gt, 1);
     while(!viewer.wasStopped ()){
         viewer.spinOnce ();
     }
     viewer.resetStoppedFlag();
-//    viewer.saveCameraParameters("Antarctica7");
 #endif
 
     // GICP reg for submaps
@@ -132,12 +153,14 @@ int main(int argc, char** argv){
 
     // Graph constructor
     GraphConstructor graph_obj(covs_lc);
+    graph_obj.edge_covs_type_ = std::stoi(method);
 
     // Noise generators
     GaussianGen transSampler, rotSampler;
     Matrix<double, 6,6> information = generateGaussianNoise(transSampler, rotSampler);
 
     // Create SLAM solver and run offline
+    std::cout << "Running graph SLAM " << std::endl;
     BathySlam slam_solver(graph_obj, gicp_reg);
     SubmapsVec submaps_reg = slam_solver.runOffline(submaps_gt, transSampler, rotSampler);
 
@@ -174,8 +197,9 @@ int main(int argc, char** argv){
 
     // Optimize graph and save to cereal
     google::InitGoogleLogging(argv[0]);
-    ceres::optimizer::MapOfPoses poses = ceres::optimizer::ceresSolver(outFilename, graph_obj.drEdges_.size());
-    ceres::optimizer::updateSubmapsCeres(poses, submaps_reg);
+    ceres::optimizer::MapOfPoses opt_results;
+    opt_results = ceres::optimizer::ceresSolver(outFilename, graph_obj.drEdges_.size());
+    ceres::optimizer::updateSubmapsCeres(opt_results, submaps_reg);
     std::cout << "Output cereal: " << boost::filesystem::basename(output_path) << std::endl;
     std::ofstream os(boost::filesystem::basename(output_path) + ".cereal", std::ofstream::binary);
     {

@@ -17,6 +17,7 @@ using namespace g2o;
 
 GraphConstructor::GraphConstructor(std::vector<Eigen::Matrix2d, Eigen::aligned_allocator<Eigen::Matrix2d> > covs_lc):
     covs_lc_(covs_lc){
+    edge_covs_type_ = 0;
 }
 
 GraphConstructor::~GraphConstructor(){
@@ -52,7 +53,7 @@ void GraphConstructor::createDREdge(const SubmapObj& submap){
 
 void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapObj& submap_to){
 
-    std::cout << "LC edge from " << submap_from.submap_id_ << " to " << submap_to.submap_id_ << std::endl;
+//    std::cout << "LC edge from " << submap_from.submap_id_ << " to " << submap_to.submap_id_ << std::endl;
 
     // Generate loop closure edges
     VertexSE3* from = vertices_[submap_from.submap_id_];
@@ -72,27 +73,43 @@ void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapOb
     pcl::compute3DCentroid(submap_from.submap_pcl_, xyz_centroid);
     pcl::computeCovarianceMatrix(submap_from.submap_pcl_, xyz_centroid, cov_matrix);
 
-    Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Zero();
-
     // Info matrix proportional to variance in Z in the pointcloud
-    if(covs_lc_.empty()){
-        Eigen::VectorXd info_diag(3), info_diag_trans(3);
-        double z = cov_matrix.normalized().inverse().cast<double>().row(2)(2);
-        info_diag << 10000.0, 10000.0, 1000.0;
-//        info_diag_trans << z, z, 10000.0;
-        info_diag_trans << 100, 100, 10000.0;
-        information.block<3,3>(0,0) = info_diag_trans.asDiagonal();
-        information.block<3,3>(3,3) = info_diag.asDiagonal();
-    }
-    else{
-        // Info matrix from NN training
-        Eigen::Matrix2d cov_reg = this->covs_lc_.at(submap_from.submap_id_);
-//        std::cout << cov_reg << std::endl;
-        Eigen::VectorXd info_diag(3), info_diag_trans(3);
-        info_diag << 10000.0, 10000.0, 1000.0;
-        information.topLeftCorner(2,2) = cov_reg.inverse();
-        information(2,2) = 10000;
-        information.block<3,3>(3,3) = info_diag.asDiagonal();
+    Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Zero();
+    Eigen::VectorXd info_diag(4), info_diag_trans(2);
+    info_diag << 10000.0, 10000.0, 10000.0, 1000.0;
+    information.bottomRightCorner(4,4) = info_diag.asDiagonal();
+    Eigen::Matrix2d cov_reg;
+
+    switch (edge_covs_type_) {
+        // Fixed external val
+        case 0:
+//            std::cout << "Fixed covs " << std::endl;
+            info_diag_trans << covs_lc_.at(0)(0,0), covs_lc_.at(0)(0,0);
+            information.topLeftCorner(2,2) = info_diag_trans.asDiagonal();
+            break;
+        // Manual vals
+        case 1:
+//            std::cout << "Avg covs " << std::endl;
+            info_diag << 10000.0, 10000.0, 10000.0, 1000.0;
+            information.block<2,2>(0,0) << 5.382, -0.486, -0.486, 8.057;  //Borno
+    //        information.block<2,2>(0,0) << 3.348, -3.127, -3.127, 5.445;    // Antarctica
+            break;
+        // Covs from GICP
+        case 2:
+//            std::cout << "GICP covs " << std::endl;
+            information = submap_from.submap_lc_info_;
+            break;
+        // Covs from external file
+        case 3:
+//            std::cout << "External covs " << std::endl;
+            cov_reg = covs_lc_.at(submap_from.submap_id_);
+            info_diag << 10000.0, 10000.0, 10000.0, 1000.0;
+            information.topLeftCorner(2,2) = cov_reg.inverse();
+            break;
+        default:
+            info_diag_trans << 1.0, 1.0;
+            information.topLeftCorner(2,2) = info_diag_trans.asDiagonal();
+            break;
     }
 
 //    std::cout << information << std::endl;
@@ -100,13 +117,10 @@ void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapOb
 
     // Check resulting COV is positive semi-definite
     Eigen::LLT<Eigen::MatrixXd> lltOfA(information);
-    if(lltOfA.info() == Eigen::NumericalIssue){
-        throw std::runtime_error("Non positive semi-definite CoV");
-        std::exit(0);
+    if(lltOfA.info() != Eigen::NumericalIssue){
+        lcEdges_.push_back(e);
+        lcMeas_.push_back(t);
     }
-
-    lcEdges_.push_back(e);
-    lcMeas_.push_back(t);
 }
 
 

@@ -17,7 +17,7 @@ target_include_directories(submaps_tools PUBLIC
     PRIVATE src)
 
 
-target_link_libraries(submaps_tools PUBLIC 
+target_link_libraries(submaps_tools
         std_data
         navi_data
         data_transforms
