@@ -92,31 +92,62 @@ bool SubmapRegistration::gicpSubmapRegistration(SubmapObj& trg_submap, SubmapObj
     pcl::NormalEstimation<PointT, pcl::Normal> ne;
     pcl::search::KdTree<PointT>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ> ());
     ne.setSearchMethod(tree);
-    ne.setRadiusSearch(30);
+    ne.setRadiusSearch(20);
 
     pcl::PointCloud<pcl::Normal>::Ptr normals_src(new pcl::PointCloud<pcl::Normal>);
     ne.setInputCloud(src_pcl_ptr);
     ne.compute(*normals_src);
+
+    pcl::PointCloud<pcl::Normal>::Ptr normals_trg(new pcl::PointCloud<pcl::Normal>);
+    ne.setInputCloud(trg_pcl_ptr);
+    ne.compute(*normals_trg);
 
     CovsVec covs_src;
     CovsVecPtr covs_src_ptr;
     pcl::features::computeApproximateCovariances(*src_pcl_ptr, *normals_src, covs_src);
     covs_src_ptr.reset(new CovsVec(covs_src));
 
+    CovsVec covs_trg;
+    CovsVecPtr covs_trg_ptr;
+    pcl::features::computeApproximateCovariances(*trg_pcl_ptr, *normals_trg, covs_trg);
+    covs_trg_ptr.reset(new CovsVec(covs_trg));
+
     // Compute GICP vanilla information matrix
+    Eigen::Matrix3d avg_cov_src;
+    avg_cov_src.setZero();
+    for(unsigned int n=0; n<covs_src_ptr->size(); n++){
+        avg_cov_src += covs_src_ptr->at(n);
+    }
+    avg_cov_src /= (covs_src_ptr->size());
+
+    Eigen::Matrix3d avg_cov_trg;
+    avg_cov_trg.setZero();
+    for(unsigned int n=0; n<covs_trg_ptr->size(); n++){
+        avg_cov_trg += covs_trg_ptr->at(n);
+    }
+    avg_cov_trg /= (covs_trg_ptr->size());
+
+    // The Iterative Closest Point algorithm
+    gicp_.setInputSource(src_pcl_ptr);
+    gicp_.setInputTarget(trg_pcl_ptr);
+    gicp_.setSourceCovariances(covs_src_ptr);
+    gicp_.setTargetCovariances(covs_trg_ptr);
+    gicp_.align (src_submap.submap_pcl_);
+
+    // Apply transform to submap
+    ret_tf_ =  gicp_.getFinalTransformation();
+    this->transformSubmap(src_submap);
+
+    // Set GICP information matrix
     src_submap.submap_lc_info_.setZero();
     Eigen::VectorXd info_diag(4);
     info_diag << 10000.0, 10000.0, 10000.0, 1000.0;
     src_submap.submap_lc_info_.bottomRightCorner(4,4) = info_diag.asDiagonal();
 
-    Eigen::Matrix3d vanilla_info;
-    vanilla_info.setZero();
-    for(unsigned int n=0; n<covs_src_ptr->size(); n++){
-        vanilla_info += covs_src_ptr->at(n);
-    }
-    vanilla_info /= (covs_src_ptr->size());
-    src_submap.submap_lc_info_.topLeftCorner(2,2) = vanilla_info.topLeftCorner(2,2).inverse();
-//    std::cout << vanilla_info.topLeftCorner(3,3) << std::endl;
+    Eigen::Matrix3d rot = ret_tf_.topLeftCorner(3,3).cast<double>();
+    Eigen::Matrix3d gicp_cov = avg_cov_trg + rot*avg_cov_src*rot.transpose();
+    src_submap.submap_lc_info_.topLeftCorner(2,2) = gicp_cov.topLeftCorner(2,2).inverse();
+//    std::cout << gicp_cov.topLeftCorner(3,3) << std::endl;
 
     for(int x=0; x<src_submap.submap_lc_info_.array().size(); x++){
         if(isnan(src_submap.submap_lc_info_.array()(x))){
@@ -124,16 +155,6 @@ bool SubmapRegistration::gicpSubmapRegistration(SubmapObj& trg_submap, SubmapObj
             std::exit(0);
         }
     }
-
-    // The Iterative Closest Point algorithm
-    gicp_.setInputSource(src_pcl_ptr);
-    gicp_.setInputTarget(trg_pcl_ptr);
-    gicp_.setSourceCovariances(covs_src_ptr);
-    gicp_.align (src_submap.submap_pcl_);
-
-    // Apply transform to submap
-    ret_tf_ =  gicp_.getFinalTransformation();
-    this->transformSubmap(src_submap);
 
     // TODO: compute this value properly
     bool convergence = (gicp_.hasConverged())? true: false;
