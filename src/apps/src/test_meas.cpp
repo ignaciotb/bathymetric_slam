@@ -36,117 +36,117 @@ using namespace g2o;
 
 int main(int argc, char** argv){
 
-    // Inputs
-    std::string track_str, map_str, output_str, original, simulation;
-    cxxopts::Options options("MyProgram", "One line description of MyProgram");
-    options.add_options()
-        ("help", "Print help")
-        ("output_cereal", "Output graph cereal", cxxopts::value(output_str))
-        ("original", "Disturb original trajectory", cxxopts::value(original))
-        ("simulation", "Simulation data from Gazebo", cxxopts::value(simulation))
-        ("trajectory", "Input AUV GT data", cxxopts::value(track_str))
-        ("map", "Localization map", cxxopts::value(map_str));
+//    // Inputs
+//    std::string track_str, map_str, output_str, original, simulation;
+//    cxxopts::Options options("MyProgram", "One line description of MyProgram");
+//    options.add_options()
+//        ("help", "Print help")
+//        ("output_cereal", "Output graph cereal", cxxopts::value(output_str))
+//        ("original", "Disturb original trajectory", cxxopts::value(original))
+//        ("simulation", "Simulation data from Gazebo", cxxopts::value(simulation))
+//        ("trajectory", "Input AUV GT data", cxxopts::value(track_str))
+//        ("map", "Localization map", cxxopts::value(map_str));
 
-    auto result = options.parse(argc, argv);
-    if (result.count("help")) {
-        cout << options.help({ "", "Group" }) << endl;
-        exit(0);
-    }
-    if(output_str.empty()){
-        output_str = "output_cereal.cereal";
-    }
-    boost::filesystem::path output_path(output_str);
-    string outFilename = "graph_corrupted.g2o";   // G2O output file
+//    auto result = options.parse(argc, argv);
+//    if (result.count("help")) {
+//        cout << options.help({ "", "Group" }) << endl;
+//        exit(0);
+//    }
+//    if(output_str.empty()){
+//        output_str = "output_cereal.cereal";
+//    }
+//    boost::filesystem::path output_path(output_str);
+//    string outFilename = "graph_corrupted.g2o";   // G2O output file
 
-    // Parse submaps from cereal file
-    SubmapsVec map_gt, traj_gt;
-    boost::filesystem::path map_path(map_str);
-    boost::filesystem::path auv_path(track_str);
-    std::cout << "Map path " << boost::filesystem::basename(map_path) << std::endl;
-    std::cout << "AUV path " << boost::filesystem::basename(auv_path) << std::endl;
-    if(simulation == "yes"){
-        map_gt = readSubmapsInDir(map_path.string());
-    }
-    else{
-        if(original == "yes"){
-            MapObj map_loc;
-            Eigen::Isometry3d map_tf;
-            std_data::pt_submaps ss = std_data::read_data<std_data::pt_submaps>(map_path);
-            std::tie(map_loc, map_tf)= parseMapAUVlib(ss);
-            map_gt.push_back(map_loc);
+//    // Parse submaps from cereal file
+//    SubmapsVec map_gt, traj_gt;
+//    boost::filesystem::path map_path(map_str);
+//    boost::filesystem::path auv_path(track_str);
+//    std::cout << "Map path " << boost::filesystem::basename(map_path) << std::endl;
+//    std::cout << "AUV path " << boost::filesystem::basename(auv_path) << std::endl;
+//    if(simulation == "yes"){
+//        map_gt = readSubmapsInDir(map_path.string());
+//    }
+//    else{
+//        if(original == "yes"){
+//            MapObj map_loc;
+//            Eigen::Isometry3d map_tf;
+//            std_data::pt_submaps ss = std_data::read_data<std_data::pt_submaps>(map_path);
+//            std::tie(map_loc, map_tf)= parseMapAUVlib(ss);
+//            map_gt.push_back(map_loc);
 
-            std_data::mbes_ping::PingsT std_pings = std_data::read_data<std_data::mbes_ping::PingsT>(auv_path);
-            std::cout << "Number of pings " << std_pings.size() << std::endl;
-            traj_gt = parsePingsAUVlib(std_pings, map_tf);
-        }
-        else{
-            std::ifstream is(boost::filesystem::basename(map_path) + ".cereal", std::ifstream::binary);
-            {
-              cereal::BinaryInputArchive iarchive(is);
-              iarchive(map_gt);
-            }
-        }
-        // Filtering of submaps
-        PointCloudT::Ptr cloud_ptr (new PointCloudT);
-        pcl::UniformSampling<PointT> us_filter;
-        us_filter.setInputCloud (cloud_ptr);
-        us_filter.setRadiusSearch(1);   // 1 for Borno, 2 for Antarctica
-        for(SubmapObj& submap_i: map_gt){
-    //        std::cout << "before " << submap_i.submap_pcl_.size() << std::endl;
-            *cloud_ptr = submap_i.submap_pcl_;
-            us_filter.setInputCloud(cloud_ptr);
-            us_filter.filter(*cloud_ptr);
-            submap_i.submap_pcl_ = *cloud_ptr;
-    //        std::cout << submap_i.submap_pcl_.size() << std::endl;
-        }
-    }
+//            std_data::mbes_ping::PingsT std_pings = std_data::read_data<std_data::mbes_ping::PingsT>(auv_path);
+//            std::cout << "Number of pings " << std_pings.size() << std::endl;
+//            traj_gt = parsePingsAUVlib(std_pings, map_tf);
+//        }
+//        else{
+//            std::ifstream is(boost::filesystem::basename(map_path) + ".cereal", std::ifstream::binary);
+//            {
+//              cereal::BinaryInputArchive iarchive(is);
+//              iarchive(map_gt);
+//            }
+//        }
+//        // Filtering of submaps
+//        PointCloudT::Ptr cloud_ptr (new PointCloudT);
+//        pcl::UniformSampling<PointT> us_filter;
+//        us_filter.setInputCloud (cloud_ptr);
+//        us_filter.setRadiusSearch(1);   // 1 for Borno, 2 for Antarctica
+//        for(SubmapObj& submap_i: map_gt){
+//    //        std::cout << "before " << submap_i.submap_pcl_.size() << std::endl;
+//            *cloud_ptr = submap_i.submap_pcl_;
+//            us_filter.setInputCloud(cloud_ptr);
+//            us_filter.filter(*cloud_ptr);
+//            submap_i.submap_pcl_ = *cloud_ptr;
+//    //        std::cout << submap_i.submap_pcl_.size() << std::endl;
+//        }
+//    }
 
-    // Visualization of initial map
-    PCLVisualizer viewer ("Map viewer");
-    SubmapsVisualizer* visualizer = new SubmapsVisualizer(viewer);
-    visualizer->setVisualizer(map_gt, 2);
-    while(!viewer.wasStopped ()){
-        viewer.spinOnce ();
-    }
-    viewer.resetStoppedFlag();
+//    // Visualization of initial map
+//    PCLVisualizer viewer ("Map viewer");
+//    SubmapsVisualizer* visualizer = new SubmapsVisualizer(viewer);
+//    visualizer->setVisualizer(map_gt, 2);
+//    while(!viewer.wasStopped ()){
+//        viewer.spinOnce ();
+//    }
+//    viewer.resetStoppedFlag();
 
-    // Create voxel grid
-    MultibeamSensor<PointT> vox_oc;
-    vox_oc.setLeafSize(1,1,1);
-    vox_oc.initializeVoxelGrid(map_gt.at(0));
+//    // Create voxel grid
+//    MultibeamSensor<PointT> vox_oc;
+//    vox_oc.setLeafSize(1,1,1);
+//    vox_oc.initializeVoxelGrid(map_gt.at(0));
 
-    // Plot localization trajectory
-    std::cout << "Number of pings " << traj_gt.size() << std::endl;
-//    std::vector<Eigen::Vector3i, Eigen::aligned_allocator<Eigen::Vector3i> > occluded_voxels;
-//    std::vector<int> idxs;
-    PointCloudT ping_i;
-    for(int j=0; j<traj_gt.size(); j=j+50){
-//    for(SubmapObj& submap_i: traj_gt){
-        // Add GT ping
-        SubmapObj submap_i = traj_gt.at(j);
-        submap_i.colors_ = Eigen::Vector3d(255,0, 0);
-        visualizer->addSubmap(submap_i, 2);
+//    // Plot localization trajectory
+//    std::cout << "Number of pings " << traj_gt.size() << std::endl;
+////    std::vector<Eigen::Vector3i, Eigen::aligned_allocator<Eigen::Vector3i> > occluded_voxels;
+////    std::vector<int> idxs;
+//    PointCloudT ping_i;
+//    for(int j=0; j<traj_gt.size(); j=j+50){
+////    for(SubmapObj& submap_i: traj_gt){
+//        // Add GT ping
+//        SubmapObj submap_i = traj_gt.at(j);
+//        submap_i.colors_ = Eigen::Vector3d(255,0, 0);
+//        visualizer->addSubmap(submap_i, 2);
 
-//        visualizer->plotMBESPing(submap_i, 2.0944, 256, 2);
+////        visualizer->plotMBESPing(submap_i, 2.0944, 256, 2);
 
-        // Compute simulated ping
-        vox_oc.createMBES(1.74/2, 3, submap_i.submap_tf_);
-        ping_i.clear();
-        vox_oc.pingComputation(ping_i);
-//        PointCloudT pcl_filtered = vox_oc.getFilteredPointCloud();
+//        // Compute simulated ping
+//        vox_oc.createMBES(1.74/2, 3, submap_i.submap_tf_);
+//        ping_i.clear();
+//        vox_oc.pingComputation(ping_i);
+////        PointCloudT pcl_filtered = vox_oc.getFilteredPointCloud();
 
-        SubmapObj simulated_ping;
-        simulated_ping.submap_tf_ = submap_i.submap_tf_;
-        simulated_ping.submap_pcl_ = ping_i;
-        std::cout << "Voxels hit: " << simulated_ping.submap_pcl_.size() << std::endl;
-        simulated_ping.colors_ = Eigen::Vector3d(0,0,255);
-        visualizer->addSubmap(simulated_ping, 2);
+//        SubmapObj simulated_ping;
+//        simulated_ping.submap_tf_ = submap_i.submap_tf_;
+//        simulated_ping.submap_pcl_ = ping_i;
+//        std::cout << "Voxels hit: " << simulated_ping.submap_pcl_.size() << std::endl;
+//        simulated_ping.colors_ = Eigen::Vector3d(0,0,255);
+//        visualizer->addSubmap(simulated_ping, 2);
 
-        while(!viewer.wasStopped ()){
-            viewer.spinOnce ();
-        }
-        viewer.resetStoppedFlag();
-    }
+//        while(!viewer.wasStopped ()){
+//            viewer.spinOnce ();
+//        }
+//        viewer.resetStoppedFlag();
+//    }
 
     return 0;
 }
