@@ -113,6 +113,8 @@ std::tuple<MapObj, Isometry3d> parseMapAUVlib(std_data::pt_submaps& ss);
 
 SubmapsVec parsePingsAUVlib(std_data::mbes_ping::PingsT& pings);
 
+SubmapsVec createSubmaps(SubmapsVec& pings);
+
 void transformSubmapObj(SubmapObj& submap, Isometry3f& poseDRt);
 
 std::pair<int, corners> getSubmapCorners(const SubmapObj& submap);

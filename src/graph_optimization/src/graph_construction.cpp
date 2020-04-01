@@ -87,7 +87,7 @@ void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapOb
     else{
         // Info matrix from NN training
         Eigen::Matrix2d cov_reg = this->covs_lc_.at(submap_from.submap_id_);
-        std::cout << cov_reg << std::endl;
+//        std::cout << cov_reg << std::endl;
         Eigen::VectorXd info_diag(3), info_diag_trans(3);
         info_diag << 10000.0, 10000.0, 1000.0;
         information.topLeftCorner(2,2) = cov_reg.inverse();
@@ -95,7 +95,7 @@ void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapOb
         information.block<3,3>(3,3) = info_diag.asDiagonal();
     }
 
-    std::cout << information << std::endl;
+//    std::cout << information << std::endl;
     e->setInformation(information);
 
     // Check resulting COV is positive semi-definite

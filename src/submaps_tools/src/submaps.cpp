@@ -291,12 +291,13 @@ SubmapsVec parsePingsAUVlib(std_data::mbes_ping::PingsT& pings){
         Vector3f pitch;
         Eigen::Matrix3d RM;
 
-        // For every ping in the .all file
+        /// For every ping in the .all file: transform coord from world to map frame
+        /// where map frame is located where the AUV starts the mission
         for (std_data::mbes_ping& ping : track_pings) {
             if(ping_cnt == 0){
-                ang << ping.roll_, ping.pitch_, 0;
+                ang << 0.0, 0.0, 0;
                 Vector3d dir = ping.beams.back() - ping.beams.front();
-                ang[2] = std::atan2(dir(1), dir(0)) + M_PI/2.0;
+                ang[2] = std::atan2(dir(1), dir(0)) - M_PI/2.0;
                 RM = data_transforms::euler_to_matrix(ang(0), ang(1), ang(2));
                 world_map_tf.translation() = ping.pos_;
                 world_map_tf.linear() = RM;
@@ -313,9 +314,9 @@ SubmapsVec parsePingsAUVlib(std_data::mbes_ping::PingsT& pings){
                                                  * ping.pos_- world_map_tf.linear().transpose()
                                                  * world_map_tf.translation()).cast<float>();
 
-            ang << ping.roll_, ping.pitch_, 0;
+            ang << 0.0, 0.0, 0;
             Vector3d dir = ping.beams.back() - ping.beams.front();
-            ang[2] = std::atan2(dir(1), dir(0)) + M_PI/2.0;
+            ang[2] = std::atan2(dir(1), dir(0)) - M_PI/2.0;
             RM = data_transforms::euler_to_matrix(ang(0), ang(1), ang(2));
             ping_sub.submap_tf_.linear() = (RM).cast<float>();
             pings_subs.push_back(ping_sub);
@@ -324,6 +325,54 @@ SubmapsVec parsePingsAUVlib(std_data::mbes_ping::PingsT& pings){
         pos = next;
     }
     return pings_subs;
+}
+
+SubmapsVec createSubmaps(SubmapsVec& pings){
+
+    SubmapsVec submaps_vec;
+    std::vector<Eigen::Isometry3f, Eigen::aligned_allocator<Eigen::Isometry3f>> pings_tfs;
+    Eigen::MatrixXd* auv_track = new Eigen::MatrixXd;
+    int cnt = 0;
+    int submap_cnt = 0;
+    int swath_cnt = 0;
+    int submap_size = 100;
+    SubmapObj* submap_k = new SubmapObj;
+    for(SubmapObj& ping_i: pings){
+        submap_k->submap_pcl_ += ping_i.submap_pcl_;
+        pings_tfs.push_back(ping_i.submap_tf_);
+        if(auv_track->rows() < cnt + 1){
+            auv_track->conservativeResize(auv_track->rows() + 1, 3);
+        }
+        auv_track->row(cnt) = submap_k->submap_tf_.translation().array().transpose().cast<double>();
+        cnt++;
+        if(cnt > submap_size){
+            cnt = 0;
+            submap_k->submap_id_ = submap_cnt;
+            submap_k->submap_tf_ = pings_tfs.at(submap_size/2);
+            pings_tfs.clear();
+            submap_k->auv_tracks_ = *auv_track;
+            delete auv_track;
+            auv_track = new Eigen::MatrixXd();
+
+            if(submap_cnt>0){
+                Eigen::Quaternionf rot_k = Eigen::Quaternionf(submap_k->submap_tf_.linear());
+                Eigen::Quaternionf rot_prev = Eigen::Quaternionf(submaps_vec.at(submap_cnt-1).submap_tf_.linear());
+                auto euler = (rot_k * rot_prev.inverse()).toRotationMatrix().eulerAngles(0,1,2);
+                if(std::abs(euler(2)) > M_PI*0.9){
+                    swath_cnt++;
+                }
+            }
+            submap_cnt++;
+            submap_k->swath_id_ = swath_cnt;
+
+            submaps_vec.push_back(*submap_k);
+            delete submap_k;
+            submap_k = new SubmapObj;
+        }
+    }
+    delete auv_track;
+
+    return submaps_vec;
 }
 
 SubmapsVec parseSubmapsAUVlib(std_data::pt_submaps& ss){

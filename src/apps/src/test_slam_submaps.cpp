@@ -65,40 +65,28 @@ int main(int argc, char** argv){
     string outFilename = "graph_corrupted.g2o";   // G2O output file
 
     // Parse submaps from cereal file
-    SubmapsVec submaps_gt;
     boost::filesystem::path submaps_path(path_str);
-    std::cout << "Input data " << boost::filesystem::basename(submaps_path) << std::endl;
-    if(simulation == "yes"){
-        submaps_gt = readSubmapsInDir(submaps_path.string());
+    std::cout << "Input data " << submaps_path << std::endl;
+    std_data::mbes_ping::PingsT std_pings = std_data::read_data<std_data::mbes_ping::PingsT>(submaps_path);
+    std::cout << "Number of pings in survey " << std_pings.size() << std::endl;
+    SubmapsVec submaps_gt;
+    {
+        SubmapsVec traj_pings = parsePingsAUVlib(std_pings);
+        submaps_gt = createSubmaps(traj_pings);
     }
-    else{
-        if(original == "yes"){
-            std_data::pt_submaps ss = std_data::read_data<std_data::pt_submaps>(submaps_path);
-            submaps_gt = parseSubmapsAUVlib(ss);
-        }
-        else{
-            std::ifstream is(boost::filesystem::basename(submaps_path) + ".cereal", std::ifstream::binary);
-            {
-              cereal::BinaryInputArchive iarchive(is);
-              iarchive(submaps_gt);
-            }
-        }
-        // Filtering of submaps
-        PointCloudT::Ptr cloud_ptr (new PointCloudT);
-        pcl::UniformSampling<PointT> us_filter;
-        us_filter.setInputCloud (cloud_ptr);
-        us_filter.setRadiusSearch(2);   // 1 for Borno, 2 for Antarctica
-        for(SubmapObj& submap_i: submaps_gt){
-    //        std::cout << "before " << submap_i.submap_pcl_.size() << std::endl;
-            *cloud_ptr = submap_i.submap_pcl_;
-            us_filter.setInputCloud(cloud_ptr);
-            us_filter.filter(*cloud_ptr);
-            submap_i.submap_pcl_ = *cloud_ptr;
-    //        std::cout << submap_i.submap_pcl_.size() << std::endl;
-        }
-    }
-
     std::cout << "Number of submaps " << submaps_gt.size() << std::endl;
+
+    // Filtering of submaps
+    PointCloudT::Ptr cloud_ptr (new PointCloudT);
+    pcl::UniformSampling<PointT> us_filter;
+    us_filter.setInputCloud (cloud_ptr);
+    us_filter.setRadiusSearch(2);   // 1 for Borno, 2 for Antarctica
+    for(SubmapObj& submap_i: submaps_gt){
+        *cloud_ptr = submap_i.submap_pcl_;
+        us_filter.setInputCloud(cloud_ptr);
+        us_filter.filter(*cloud_ptr);
+        submap_i.submap_pcl_ = *cloud_ptr;
+    }
 
     // Read training covs from folder
     covs covs_lc;
@@ -124,7 +112,6 @@ int main(int argc, char** argv){
         viewer.spinOnce ();
     }
     viewer.resetStoppedFlag();
-//    viewer.saveCameraParameters("Antarctica7");
 #endif
 
     // GICP reg for submaps
