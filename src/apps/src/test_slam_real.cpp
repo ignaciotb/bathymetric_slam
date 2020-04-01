@@ -17,8 +17,6 @@
 #include <boost/filesystem.hpp>
 #include <cereal/archives/binary.hpp>
 
-#include <pcl/filters/uniform_sampling.h>
-
 #include "data_tools/std_data.h"
 #include "data_tools/benchmark.h"
 
@@ -35,6 +33,8 @@
 
 #include "bathy_slam/bathy_slam.hpp"
 
+#include <pcl/filters/uniform_sampling.h>
+
 #define INTERACTIVE 0
 #define VISUAL 1
 
@@ -45,19 +45,13 @@ using namespace g2o;
 int main(int argc, char** argv){
 
     // Inputs
-    std::cout << "------------------------------------------------------------" << std::endl;
-    std::string folder_str, path_str, output_str, original, simulation, const_cov, mc_method, method;
+    std::string folder_str, path_str, output_str, simulation;
     cxxopts::Options options("MyProgram", "One line description of MyProgram");
     options.add_options()
         ("help", "Print help")
-        ("method", "Monte Carlo covs", cxxopts::value(method))
-        ("covs_folder", "Input covs folder", cxxopts::value(folder_str))
-        ("output_cereal", "Output graph cereal", cxxopts::value(output_str))
-        ("original", "Disturb original trajectory", cxxopts::value(original))
         ("simulation", "Simulation data from Gazebo", cxxopts::value(simulation))
-        ("const_cov", "Constant covariance value", cxxopts::value(const_cov))
-        ("mc", "Monte Carlo covs", cxxopts::value(mc_method))
-        ("slam_cereal", "Input ceres file", cxxopts::value(path_str));
+        ("bathy_survey", "Input MBES pings in cereal file if simulation = no. If in simulation"
+                          "input path to map_small folder", cxxopts::value(path_str));
 
     auto result = options.parse(argc, argv);
     if (result.count("help")) {
@@ -71,63 +65,40 @@ int main(int argc, char** argv){
     string outFilename = "graph_corrupted.g2o";   // G2O output file
 
     // Parse submaps from cereal file
-    SubmapsVec submaps_gt;
     boost::filesystem::path submaps_path(path_str);
-    std::cout << "Input data " << boost::filesystem::basename(submaps_path) << std::endl;
+    std::cout << "Input data " << submaps_path << std::endl;
+
+    SubmapsVec submaps_gt;
     if(simulation == "yes"){
         submaps_gt = readSubmapsInDir(submaps_path.string());
     }
     else{
-        if(original == "yes"){
-            std_data::pt_submaps ss = std_data::read_data<std_data::pt_submaps>(submaps_path);
-            submaps_gt = parseSubmapsAUVlib(ss);
-        }
-        else{
-            std::ifstream is(boost::filesystem::basename(submaps_path) + ".cereal", std::ifstream::binary);
-            {
-              cereal::BinaryInputArchive iarchive(is);
-              iarchive(submaps_gt);
+        std_data::mbes_ping::PingsT std_pings = std_data::read_data<std_data::mbes_ping::PingsT>(submaps_path);
+        std::cout << "Number of pings in survey " << std_pings.size() << std::endl;
+        {
+            SubmapsVec traj_pings = parsePingsAUVlib(std_pings);
+            submaps_gt = createSubmaps(traj_pings);
+            // Filtering of submaps
+            PointCloudT::Ptr cloud_ptr (new PointCloudT);
+            pcl::UniformSampling<PointT> us_filter;
+            us_filter.setInputCloud (cloud_ptr);
+            us_filter.setRadiusSearch(2);
+            for(SubmapObj& submap_i: submaps_gt){
+                *cloud_ptr = submap_i.submap_pcl_;
+                us_filter.setInputCloud(cloud_ptr);
+                us_filter.filter(*cloud_ptr);
+                submap_i.submap_pcl_ = *cloud_ptr;
             }
-        }
-        // Filtering of submaps
-        PointCloudT::Ptr cloud_ptr (new PointCloudT);
-        pcl::UniformSampling<PointT> us_filter;
-        us_filter.setInputCloud (cloud_ptr);
-        us_filter.setRadiusSearch(2);   // 1 for Borno, 2 for Antarctica
-        for(SubmapObj& submap_i: submaps_gt){
-    //        std::cout << "before " << submap_i.submap_pcl_.size() << std::endl;
-            *cloud_ptr = submap_i.submap_pcl_;
-            us_filter.setInputCloud(cloud_ptr);
-            us_filter.filter(*cloud_ptr);
-            submap_i.submap_pcl_ = *cloud_ptr;
-    //        std::cout << submap_i.submap_pcl_.size() << std::endl;
         }
     }
     std::cout << "Number of submaps " << submaps_gt.size() << std::endl;
 
+
     // Read training covs from folder
     covs covs_lc;
-    std::string results_path;
     boost::filesystem::path folder(folder_str);
     if(boost::filesystem::is_directory(folder)) {
         covs_lc = readCovsFromFiles(folder);
-        if(mc_method == "yes"){
-            results_path = "results_mc.txt";
-        }
-        else{
-            results_path = "results_nn.txt";
-        }
-        std::cout << "Results to " << results_path << std::endl;
-    }
-    else{
-        if(const_cov.empty()){
-            std::cout << "Input a covariance value for the optimization" << std::endl;
-            exit(0);
-        }
-        Eigen::Vector2d diag;
-        diag << std::stod(const_cov), std::stod(const_cov);
-        covs_lc.push_back(diag.asDiagonal());
-        results_path = "results_" + const_cov + ".txt";
     }
 
     // Benchmark GT
@@ -136,10 +107,12 @@ int main(int argc, char** argv){
     PointsT gt_track = trackToMatrixSubmap(submaps_gt);
     benchmark.add_ground_truth(gt_map, gt_track);
     ceres::optimizer::saveOriginalTrajectory(submaps_gt); // Save original trajectory to txt
+    std::cout << "Visualizing original survey, press q to continue" << std::endl;
 
     // Visualization
 #if VISUAL == 1
     PCLVisualizer viewer ("Submaps viewer");
+    viewer.loadCameraParameters("Antarctica7");
     SubmapsVisualizer* visualizer = new SubmapsVisualizer(viewer);
     visualizer->setVisualizer(submaps_gt, 1);
     while(!viewer.wasStopped ()){
@@ -153,16 +126,16 @@ int main(int argc, char** argv){
 
     // Graph constructor
     GraphConstructor graph_obj(covs_lc);
-    graph_obj.edge_covs_type_ = std::stoi(method);
 
     // Noise generators
     GaussianGen transSampler, rotSampler;
     Matrix<double, 6,6> information = generateGaussianNoise(transSampler, rotSampler);
 
     // Create SLAM solver and run offline
-    std::cout << "Running graph SLAM " << std::endl;
+    std::cout << "Building bathymetric graph with GICP submap registration" << std::endl;
     BathySlam slam_solver(graph_obj, gicp_reg);
     SubmapsVec submaps_reg = slam_solver.runOffline(submaps_gt, transSampler, rotSampler);
+    std::cout << "Done building graph, press q to continue" << std::endl;
 
 #if VISUAL == 1
     // Update visualizer
@@ -178,6 +151,7 @@ int main(int argc, char** argv){
 
     // Create initial DR chain and visualize
     graph_obj.createInitialEstimate(submaps_reg);
+    std::cout << "Gaussian noise added to graph, press q to continue" << std::endl;
 
 #if VISUAL == 1
     visualizer->plotPoseGraphG2O(graph_obj, submaps_reg);
@@ -197,9 +171,8 @@ int main(int argc, char** argv){
 
     // Optimize graph and save to cereal
     google::InitGoogleLogging(argv[0]);
-    ceres::optimizer::MapOfPoses opt_results;
-    opt_results = ceres::optimizer::ceresSolver(outFilename, graph_obj.drEdges_.size());
-    ceres::optimizer::updateSubmapsCeres(opt_results, submaps_reg);
+    ceres::optimizer::MapOfPoses poses = ceres::optimizer::ceresSolver(outFilename, graph_obj.drEdges_.size());
+    ceres::optimizer::updateSubmapsCeres(poses, submaps_reg);
     std::cout << "Output cereal: " << boost::filesystem::basename(output_path) << std::endl;
     std::ofstream os(boost::filesystem::basename(output_path) + ".cereal", std::ofstream::binary);
     {
@@ -207,6 +180,7 @@ int main(int argc, char** argv){
         oarchive(submaps_reg);
         os.close();
     }
+    std::cout << "Graph optimized, press q to continue" << std::endl;
 
 #if VISUAL == 1
     // Visualize Ceres output

@@ -17,7 +17,7 @@ using namespace g2o;
 
 GraphConstructor::GraphConstructor(std::vector<Eigen::Matrix2d, Eigen::aligned_allocator<Eigen::Matrix2d> > covs_lc):
     covs_lc_(covs_lc){
-    edge_covs_type_ = 0;
+    edge_covs_type_ = 2;
 }
 
 GraphConstructor::~GraphConstructor(){
@@ -53,7 +53,7 @@ void GraphConstructor::createDREdge(const SubmapObj& submap){
 
 void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapObj& submap_to){
 
-//    std::cout << "LC edge from " << submap_from.submap_id_ << " to " << submap_to.submap_id_ << std::endl;
+    std::cout << "LC edge from " << submap_from.submap_id_ << " to " << submap_to.submap_id_ << std::endl;
 
     // Generate loop closure edges
     VertexSE3* from = vertices_[submap_from.submap_id_];
