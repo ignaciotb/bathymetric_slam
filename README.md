@@ -33,6 +33,12 @@ The method implemented is described [in this paper](https://ieeexplore.ieee.org/
 * G2O https://github.com/RainerKuemmerle/g2o
 * Ceres http://ceres-solver.org/
 
+Note that for G2O to be used by this repo you need to install it at a system level.
+From the G2O build folder, run  
+```
+sudo make install
+```
+
 ## Building
 
 Clone this repository and create a `build` folder under the root, then execute
