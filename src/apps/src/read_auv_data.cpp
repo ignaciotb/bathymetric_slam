@@ -17,43 +17,6 @@
 
 using namespace std;
 
-double angle_limit (double angle) // keep angle within [0;2*pi[
-{
-    while (angle >= M_PI*2)
-        angle -= M_PI*2;
-    while (angle < 0)
-        angle += M_PI*2;
-    return angle;
-}
-
-void divide_on_tracks(std_data::mbes_ping::PingsT& pings){
-
-    int num_pings = pings.size();
-    int cnt = 0;
-    int min_pings = 300;
-    int max_pings = 1000;
-
-    double current_heading; // heading of vehicle
-    double past_heading = 0; // heading of vehicle
-    std::cout << num_pings << std::endl;
-    std::cout << "First ping " << pings[0].time_string_ << std::endl;
-    std::cout << "Last ping " << pings[num_pings-3].time_string_ << std::endl;
-    for(int i=0; i<num_pings; i++){
-        pings[i].first_in_file_ = false;
-        current_heading = angle_limit(pings[i].heading_);
-        if(i==0){
-            past_heading = current_heading;
-        }
-        if ((abs(current_heading- past_heading) > M_PI) && cnt > min_pings /*|| cnt > max_pings*/){
-            std::cout << i << std::endl;
-            pings[i].first_in_file_ = true;
-            past_heading = current_heading;
-            cnt = 0;
-        }
-        cnt++;
-    }
-}
-
 int main(int argc, char** argv) {
     string folder_str;
     string file_str;
@@ -118,29 +81,7 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    // Read from disk
-//    std_pings = std_data::read_data<std_data::mbes_ping::PingsT>(pings_path);
-
-    // Divides the tracks into roughly square pieces
-//    divide_on_tracks(std_pings);
-//    navi_data::divide_tracks(std_pings);
-
-    // Save maps as .xyz pointclouds to use with external tools
-//    navi_data::save_submaps_files(std_pings, folder);
-
     // write to disk
-//    std_data::write_data(std_pings, pings_path);
-
-    // convert to submaps
-    std_data::pt_submaps ss;
-    std::tie(ss.points, ss.trans, ss.angles,
-             ss.matches,ss.bounds, ss.tracks) = navi_data::create_submaps(std_pings);
-    for (const Eigen::Vector3d& ang : ss.angles) {
-        ss.rots.push_back(data_transforms::euler_to_matrix(ang(0), ang(1), ang(2)));
-    }
-
-    // write to disk
-    std_data::write_data(ss, submaps_path);
     std_data::write_data<std_data::mbes_ping::PingsT>(std_pings, pings_path);
 
 

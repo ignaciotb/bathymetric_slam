@@ -28,6 +28,7 @@
 
 
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloudT;
+typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudRGB;
 typedef pcl::PointXYZ PointT;
 using pcl::visualization::PCLVisualizer;
 typedef std::tuple<Eigen::Isometry3f, Eigen::Array3f> grid_point;

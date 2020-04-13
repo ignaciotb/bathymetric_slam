@@ -112,7 +112,9 @@ std::tuple<MapObj, Isometry3d> parseMapAUVlib(std_data::pt_submaps& ss);
 
 SubmapsVec parsePingsAUVlib(std_data::mbes_ping::PingsT& pings);
 
-SubmapsVec createSubmaps(SubmapsVec& pings);
+SubmapsVec createSubmaps(SubmapsVec& pings, int submap_size);
+
+SubmapsVec createMap(SubmapsVec& pings, int submap_size);
 
 void transformSubmapObj(SubmapObj& submap, Isometry3f& poseDRt);
 

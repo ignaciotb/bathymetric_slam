@@ -77,7 +77,9 @@ int main(int argc, char** argv){
         std::cout << "Number of pings in survey " << std_pings.size() << std::endl;
         {
             SubmapsVec traj_pings = parsePingsAUVlib(std_pings);
-            submaps_gt = createSubmaps(traj_pings);
+            int submap_size = 100;
+            submaps_gt = createSubmaps(traj_pings, submap_size);
+
             // Filtering of submaps
             PointCloudT::Ptr cloud_ptr (new PointCloudT);
             pcl::UniformSampling<PointT> us_filter;
@@ -92,14 +94,6 @@ int main(int argc, char** argv){
         }
     }
     std::cout << "Number of submaps " << submaps_gt.size() << std::endl;
-
-
-    // Read training covs from folder
-    covs covs_lc;
-    boost::filesystem::path folder(folder_str);
-    if(boost::filesystem::is_directory(folder)) {
-        covs_lc = readCovsFromFiles(folder);
-    }
 
     // Benchmark GT
     benchmark::track_error_benchmark benchmark("real_data");
@@ -121,11 +115,17 @@ int main(int argc, char** argv){
     viewer.resetStoppedFlag();
 #endif
 
+    // Graph constructor
+    // Read training covs from folder
+    covs covs_lc;
+    boost::filesystem::path folder(folder_str);
+    if(boost::filesystem::is_directory(folder)) {
+        covs_lc = readCovsFromFiles(folder);
+    }
+    GraphConstructor graph_obj(covs_lc);
+
     // GICP reg for submaps
     SubmapRegistration gicp_reg;
-
-    // Graph constructor
-    GraphConstructor graph_obj(covs_lc);
 
     // Noise generators
     GaussianGen transSampler, rotSampler;
