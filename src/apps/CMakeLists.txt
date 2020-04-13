@@ -23,6 +23,23 @@ target_link_libraries(bathy_slam_real
    slam_solver
 )
 
+add_executable(test_clouds
+       src/test_clouds.cpp
+)
+
+target_link_libraries(test_clouds
+   gicp_registration
+   utils_g2o
+   submaps_tools
+   graph_construction
+   ceres_optimizer
+   read_g2o
+   data_transforms
+   benchmark
+   std_data
+   slam_solver
+)
+
 add_executable(read_auv_data
        src/read_auv_data.cpp
 )
