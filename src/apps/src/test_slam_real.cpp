@@ -92,6 +92,7 @@ int main(int argc, char** argv){
                 submap_i.submap_pcl_ = *cloud_ptr;
             }
         }
+
     }
     std::cout << "Number of submaps " << submaps_gt.size() << std::endl;
 
