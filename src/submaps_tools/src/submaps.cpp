@@ -297,7 +297,7 @@ SubmapsVec parsePingsAUVlib(std_data::mbes_ping::PingsT& pings){
             if(ping_cnt == 0){
                 ang << 0.0, 0.0, 0;
                 Vector3d dir = ping.beams.back() - ping.beams.front();
-                ang[2] = std::atan2(dir(1), dir(0)) - M_PI/2.0;
+                ang[2] = std::atan2(dir(1), dir(0)) + M_PI/2.0;
                 RM = data_transforms::euler_to_matrix(ang(0), ang(1), ang(2));
                 world_map_tf.translation() = ping.pos_;
                 world_map_tf.linear() = RM;
@@ -316,7 +316,7 @@ SubmapsVec parsePingsAUVlib(std_data::mbes_ping::PingsT& pings){
 
             ang << 0.0, 0.0, 0;
             Vector3d dir = ping.beams.back() - ping.beams.front();
-            ang[2] = std::atan2(dir(1), dir(0)) - M_PI/2.0;
+            ang[2] = std::atan2(dir(1), dir(0)) + M_PI/2.0;
             RM = data_transforms::euler_to_matrix(ang(0), ang(1), ang(2));
             ping_sub.submap_tf_.linear() = (RM).cast<float>();
             pings_subs.push_back(ping_sub);
