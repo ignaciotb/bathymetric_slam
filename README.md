@@ -33,7 +33,7 @@ The method implemented is described [in this paper](https://ieeexplore.ieee.org/
 
 ## Dependencies (tested on Ubuntu 16.04 and 18.04)
 * AUVLIB [here](https://github.com/ignaciotb/auvlib) 
-* PCL  http://pointclouds.org/ (version 1.8.1)
+* PCL  http://pointclouds.org/
 * G2O https://github.com/RainerKuemmerle/g2o
 * Ceres http://ceres-solver.org/
 
