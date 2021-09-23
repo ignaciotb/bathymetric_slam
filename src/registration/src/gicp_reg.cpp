@@ -161,3 +161,32 @@ bool SubmapRegistration::gicpSubmapRegistration(SubmapObj& trg_submap, SubmapObj
     return convergence;
 }
 
+
+bool SubmapRegistration::gicpSubmapRegistrationSimple(SubmapObj& trg_submap, SubmapObj& src_submap){
+
+    // Copy the originals to work over them
+    PointCloudT::Ptr src_pcl_ptr (new PointCloudT(src_submap.submap_pcl_));
+    PointCloudT::Ptr trg_pcl_ptr (new PointCloudT(trg_submap.submap_pcl_));
+
+    // The Iterative Closest Point algorithm
+    gicp_.setInputSource(src_pcl_ptr);
+    gicp_.setInputTarget(trg_pcl_ptr);
+    gicp_.align (src_submap.submap_pcl_);
+
+    // Apply transform to submap
+    ret_tf_ =  gicp_.getFinalTransformation();
+    this->transformSubmap(src_submap);
+
+    // Check for nan values
+    for(int x=0; x<src_submap.submap_lc_info_.array().size(); x++){
+        if(isnan(src_submap.submap_lc_info_.array()(x))){
+            throw std::runtime_error("Nan components in the matrix");
+            std::exit(0);
+        }
+    }
+
+    // TODO: compute this value properly
+    bool convergence = (gicp_.hasConverged())? true: false;
+    return convergence;
+}
+

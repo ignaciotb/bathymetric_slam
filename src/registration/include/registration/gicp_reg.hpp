@@ -44,6 +44,8 @@ public:
 
     bool gicpSubmapRegistration(SubmapObj &trg_submap, SubmapObj &src_submap);
 
+    bool gicpSubmapRegistrationSimple(SubmapObj& trg_submap, SubmapObj& src_submap);
+
     void transformSubmap(SubmapObj& submap);
 
     SubmapObj constructTrgSubmap(const SubmapsVec& submaps_set, std::vector<int> &overlaps);
