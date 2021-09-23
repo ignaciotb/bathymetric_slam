@@ -72,15 +72,16 @@ Eigen::Matrix<double, 6, 6> SubmapObj::createDRWeights(){
     return information;
 }
 
-void SubmapObj::findOverlaps(std::vector<SubmapObj, Eigen::aligned_allocator<SubmapObj> > &submaps_set){
+void SubmapObj::findOverlaps(bool submaps_in_map_tf,
+    std::vector<SubmapObj, Eigen::aligned_allocator<SubmapObj> > &submaps_set){
 
     overlaps_idx_.clear();
 
     std::vector<std::pair<int, corners>> corners_set;
-    corners submap_i_corners = std::get<1>(getSubmapCorners(*this));
+    corners submap_i_corners = std::get<1>(getSubmapCorners(submaps_in_map_tf, *this));
     // Extract corners of all submaps
     for(SubmapObj& submap_j: submaps_set){
-        corners_set.push_back(getSubmapCorners(submap_j));
+        corners_set.push_back(getSubmapCorners(submaps_in_map_tf, submap_j));
     }
 
     bool overlap_flag;
@@ -95,14 +96,20 @@ void SubmapObj::findOverlaps(std::vector<SubmapObj, Eigen::aligned_allocator<Sub
 }
 
 
-std::pair<int, corners> getSubmapCorners(const SubmapObj& submap){
+std::pair<int, corners> getSubmapCorners(bool submaps_in_map_tf, const SubmapObj& submap){
 
     // Transform point cloud back to map frame
-    PointCloudT submap_pcl_aux;
-    pcl::transformPointCloud(submap.submap_pcl_, submap_pcl_aux, submap.submap_tf_.inverse().matrix());
+    Eigen::MatrixXf points;
+    if(submaps_in_map_tf){
+        PointCloudT submap_pcl_aux;
+        pcl::transformPointCloud(submap.submap_pcl_, submap_pcl_aux, submap.submap_tf_.inverse().matrix());
+        points = submap_pcl_aux.getMatrixXfMap(3,4,0).transpose();
+    }
+    else{
+        points = submap.submap_pcl_.getMatrixXfMap(3,4,0).transpose();
+    }
 
     // Extract corners
-    Eigen::MatrixXf points = submap_pcl_aux.getMatrixXfMap(3,4,0).transpose();
     double min_x, min_y, max_x, max_y;
     double overlap_coverage = 0.6; // Reduce submap area to look for overlap by this factor
     min_x = points.col(0).minCoeff() * overlap_coverage;   // min x
@@ -536,7 +543,7 @@ void transformSubmapObj(SubmapObj& submap, Eigen::Isometry3f& poseDRt){
 }
 
 bool checkSubmapSize(const SubmapObj& submap_i){
-    std::pair<int, corners> submap_corners = getSubmapCorners(submap_i);
+    std::pair<int, corners> submap_corners = getSubmapCorners(true, submap_i);
     double grid_x, grid_y;
     unsigned int k_next;
     bool reject = false;

@@ -29,7 +29,9 @@ SubmapsVec BathySlam::runOffline(SubmapsVec& submaps_gt, GaussianGen& transSampl
                 submaps_prev.push_back(submap_k);
             }
         }
-        submap_i.findOverlaps(submaps_prev);
+	// Submaps in map_frame?
+	bool submaps_in_map_tf = true;
+        submap_i.findOverlaps(submaps_in_map_tf, submaps_prev);
         submaps_prev.clear();
 
     #if INTERACTIVE == 1
