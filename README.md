@@ -7,15 +7,27 @@ The algorithm gets a set of bathymetric submaps as input and corrects the global
 ![real_data_example](https://github.com/ignaciotb/bathymetric_slam/blob/master/img/graph_borno.png)
 
 
-## Paper introducing the framework
-[Paper](https://arxiv.org/abs/2203.10893)
-If you find the repo and the methods useful, please cite us.
+## Paper introducing and applying the method
+The method implemented is described [in this paper](https://ieeexplore.ieee.org/abstract/document/8968241) and used [in this one](https://arxiv.org/abs/2003.10931)
 ```
-@article{torroba2022fully,
-  title={Fully-probabilistic Terrain Modelling with Stochastic Variational Gaussian Process Maps},
-  author={Torroba, Ignacio and Sprague, Christopher Illife and Folkesson, John},
-  journal={arXiv preprint arXiv:2203.10893},
-  year={2022}
+@inproceedings{torroba2019towards,
+  title={Towards Autonomous Industrial-Scale Bathymetric Surveying},
+  author={Torroba, Ignacio and Bore, Nils and Folkesson, John},
+  booktitle={2019 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
+  pages={6377--6382},
+  year={2019},
+  organization={IEEE}
+}
+
+@article{torroba2020pointnetkl,
+  title={PointNetKL: Deep Inference for GICP Covariance Estimation in Bathymetric SLAM},
+  author={Torroba, Ignacio and Sprague, Christopher Iliffe and Bore, Nils and Folkesson, John},
+  journal={IEEE Robotics and Automation Letters},
+  volume={5},
+  number={3},
+  pages={4078--4085},
+  year={2020},
+  publisher={IEEE}
 }
 ```
 
