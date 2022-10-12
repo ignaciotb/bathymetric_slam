@@ -29,7 +29,7 @@
 #include "data_tools/benchmark.h"
 
 typedef std::vector<Eigen::Matrix3d, Eigen::aligned_allocator<Eigen::Matrix3d> > CovsVec;
-typedef boost::shared_ptr <CovsVec > CovsVecPtr;
+typedef std::shared_ptr <CovsVec > CovsVecPtr;
 
 class SubmapRegistration {
 

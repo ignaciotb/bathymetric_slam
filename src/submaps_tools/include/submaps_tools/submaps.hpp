@@ -27,6 +27,8 @@
 #include <data_tools/navi_data.h>
 #include <data_tools/transforms.h>
 
+#include <boost/algorithm/string.hpp>
+
 using namespace std;
 using namespace Eigen;
 typedef std::vector<Eigen::MatrixXd, Eigen::aligned_allocator<Eigen::MatrixXd>> PointsT;

@@ -68,7 +68,7 @@ int main(int argc, char** argv) {
         all_data::all_nav_entry::EntriesT entries = std_data::parse_folder<all_data::all_nav_entry>(folder);
         all_data::all_mbes_ping::PingsT pings = std_data::parse_folder<all_data::all_mbes_ping>(folder);
         all_data::all_nav_attitude::EntriesT attitudes = std_data::parse_folder<all_data::all_nav_attitude>(folder);
-        std_pings = all_data::convert_matched_entries(pings, entries);
+        std_pings = all_data::convert_matched_entries(pings, entries, 0.);
         std_pings = all_data::match_attitude(std_pings, attitudes);
     }
     else if (type == "navi") {
