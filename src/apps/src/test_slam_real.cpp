@@ -38,11 +38,14 @@
 #define INTERACTIVE 0
 #define VISUAL 1
 
+
 using namespace Eigen;
 using namespace std;
 using namespace g2o;
 
 int main(int argc, char** argv){
+    int i = 0;
+    int viz_time = 1000000000;
 
     // Inputs
     std::string folder_str, path_str, output_str, simulation;
@@ -109,8 +112,11 @@ int main(int argc, char** argv){
     viewer.loadCameraParameters("Antarctica7");
     SubmapsVisualizer* visualizer = new SubmapsVisualizer(viewer);
     visualizer->setVisualizer(submaps_gt, 1);
-    while(!viewer.wasStopped ()){
-        viewer.spinOnce ();
+
+    i = 0;
+    while (i < viz_time) {
+        viewer.spinOnce();
+        i++;
     }
     viewer.resetStoppedFlag();
 #endif
@@ -140,8 +146,10 @@ int main(int argc, char** argv){
 #if VISUAL == 1
     // Update visualizer
     visualizer->updateVisualizer(submaps_reg);
-    while(!viewer.wasStopped ()){
-        viewer.spinOnce ();
+    i = 0;
+    while (i < viz_time) {
+        viewer.spinOnce();
+        i++;
     }
     viewer.resetStoppedFlag();
 #endif
@@ -155,8 +163,10 @@ int main(int argc, char** argv){
 
 #if VISUAL == 1
     visualizer->plotPoseGraphG2O(graph_obj, submaps_reg);
-    while(!viewer.wasStopped ()){
-        viewer.spinOnce ();
+    i = 0;
+    while (i < viz_time) {
+        viewer.spinOnce();
+        i++;
     }
     viewer.resetStoppedFlag();
 #endif
@@ -185,10 +195,11 @@ int main(int argc, char** argv){
 #if VISUAL == 1
     // Visualize Ceres output
     visualizer->plotPoseGraphCeres(submaps_reg);
-    while(!viewer.wasStopped ()){
-        viewer.spinOnce ();
+    i = 0;
+    while (i < viz_time) {
+        viewer.spinOnce();
+        i++;
     }
-    viewer.resetStoppedFlag();
     delete(visualizer);
 #endif
 
