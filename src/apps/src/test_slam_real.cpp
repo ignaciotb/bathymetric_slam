@@ -38,10 +38,13 @@
 #define INTERACTIVE 0
 #define VISUAL 1
 
-
 using namespace Eigen;
 using namespace std;
 using namespace g2o;
+
+bool next_step = false;
+int current_step = 0;
+
 
 void benchmark_gt(SubmapsVec& submaps_gt, benchmark::track_error_benchmark& benchmark) {
     // Benchmark GT
@@ -110,10 +113,14 @@ void benchmark_optimized(SubmapsVec& submaps_reg, benchmark::track_error_benchma
     system(command);
 }
 
-int main(int argc, char** argv){
-    int i = 0;
-    int viz_time = 1000000000;
+void keyboardEventOccurred(const pcl::visualization::KeyboardEvent& event, void* nothing) {
+    if (event.getKeySym() == "space" && event.keyDown()) {
+        next_step = true;
+        current_step++;
+    }
+}
 
+int main(int argc, char** argv){
     // Inputs
     std::string folder_str, path_str, output_str, simulation;
     cxxopts::Options options("MyProgram", "One line description of MyProgram");
@@ -138,7 +145,7 @@ int main(int argc, char** argv){
     boost::filesystem::path submaps_path(path_str);
     std::cout << "Input data " << submaps_path << std::endl;
 
-    SubmapsVec submaps_gt;
+    SubmapsVec submaps_gt, submaps_reg;
     if(simulation == "yes"){
         submaps_gt = readSubmapsInDir(submaps_path.string());
     }
@@ -182,60 +189,48 @@ int main(int argc, char** argv){
     benchmark::track_error_benchmark benchmark("real_data");
     benchmark_gt(submaps_gt, benchmark);
 
+#if VISUAL != 1
+    submaps_reg = build_bathymetric_graph(submaps_gt, graph_obj, transSampler, rotSampler);
+    add_gaussian_noise_to_graph(graph_obj, transSampler, rotSampler, submaps_reg);
+    optimize_graph(graph_obj, outFilename, submaps_reg, benchmark, argv[0], output_path);
+    benchmark_optimized(submaps_reg, benchmark);
+#endif
+
     // Visualization
 #if VISUAL == 1
     PCLVisualizer viewer ("Submaps viewer");
+    viewer.registerKeyboardCallback(&keyboardEventOccurred, (void*) NULL);
     viewer.loadCameraParameters("Antarctica7");
     SubmapsVisualizer* visualizer = new SubmapsVisualizer(viewer);
     visualizer->setVisualizer(submaps_gt, 1);
 
-    i = 0;
-    while (i < viz_time) {
+    while (!viewer.wasStopped()) {
         viewer.spinOnce();
-        i++;
-    }
-    viewer.resetStoppedFlag();
-#endif
-
-    SubmapsVec submaps_reg = build_bathymetric_graph(submaps_gt, graph_obj, transSampler, rotSampler);
-
-#if VISUAL == 1
-    // Update visualizer
-    visualizer->updateVisualizer(submaps_reg);
-    i = 0;
-    while (i < viz_time) {
-        viewer.spinOnce();
-        i++;
-    }
-    viewer.resetStoppedFlag();
-#endif
-
-add_gaussian_noise_to_graph(graph_obj, transSampler, rotSampler, submaps_reg);
-
-#if VISUAL == 1
-    visualizer->plotPoseGraphG2O(graph_obj, submaps_reg);
-    i = 0;
-    while (i < viz_time) {
-        viewer.spinOnce();
-        i++;
-    }
-    viewer.resetStoppedFlag();
-#endif
-
-optimize_graph(graph_obj, outFilename, submaps_reg, benchmark, argv[0], output_path);
-
-#if VISUAL == 1
-    // Visualize Ceres output
-    visualizer->plotPoseGraphCeres(submaps_reg);
-    i = 0;
-    while (i < viz_time) {
-        viewer.spinOnce();
-        i++;
+        if (next_step) {
+            next_step = false;
+            switch (current_step)
+            {
+            case 1:
+                submaps_reg = build_bathymetric_graph(submaps_gt, graph_obj, transSampler, rotSampler);
+                visualizer->updateVisualizer(submaps_reg);
+                break;
+            case 2:
+                add_gaussian_noise_to_graph(graph_obj, transSampler, rotSampler, submaps_reg);
+                visualizer->plotPoseGraphG2O(graph_obj, submaps_reg);
+                break;
+            case 3:
+                optimize_graph(graph_obj, outFilename, submaps_reg, benchmark, argv[0], output_path);
+                // Visualize Ceres output
+                visualizer->plotPoseGraphCeres(submaps_reg);
+                break;
+            default:
+                break;
+            }
+        }
     }
     delete(visualizer);
-#endif
-
     benchmark_optimized(submaps_reg, benchmark);
+#endif
 
     return 0;
 }
