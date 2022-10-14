@@ -209,7 +209,7 @@ int main(int argc, char** argv){
     benchmark.add_benchmark(opt_map, opt_track, "optimized");
     benchmark.print_summary();
 
-    std::string command_str = "../scripts/plot_results.py --initial_poses poses_original.txt --corrupted_poses poses_corrupted.txt --optimized_poses poses_optimized.txt";
+    std::string command_str = "python ../scripts/plot_results.py --initial_poses poses_original.txt --corrupted_poses poses_corrupted.txt --optimized_poses poses_optimized.txt";
     const char *command = command_str.c_str();
     system(command);
 
