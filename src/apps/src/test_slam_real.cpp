@@ -43,6 +43,73 @@ using namespace Eigen;
 using namespace std;
 using namespace g2o;
 
+void benchmark_gt(SubmapsVec& submaps_gt, benchmark::track_error_benchmark& benchmark) {
+    // Benchmark GT
+    PointsT gt_map = pclToMatrixSubmap(submaps_gt);
+    PointsT gt_track = trackToMatrixSubmap(submaps_gt);
+    benchmark.add_ground_truth(gt_map, gt_track);
+    ceres::optimizer::saveOriginalTrajectory(submaps_gt); // Save original trajectory to txt
+    std::cout << "Visualizing original survey, press q to continue" << std::endl;
+}
+
+SubmapsVec build_bathymetric_graph(SubmapsVec& submaps_gt, GraphConstructor& graph_obj,
+GaussianGen& transSampler, GaussianGen& rotSampler) {
+
+    // GICP reg for submaps
+    SubmapRegistration gicp_reg;
+
+    // Create SLAM solver and run offline
+    std::cout << "Building bathymetric graph with GICP submap registration" << std::endl;
+    BathySlam slam_solver(graph_obj, gicp_reg);
+    SubmapsVec submaps_reg = slam_solver.runOffline(submaps_gt, transSampler, rotSampler);
+    std::cout << "Done building graph, press q to continue" << std::endl;
+    return submaps_reg;
+}
+
+void add_gaussian_noise_to_graph(GraphConstructor& graph_obj, GaussianGen& transSampler, GaussianGen& rotSampler, SubmapsVec& submaps_reg) {
+    // Add noise to edges on the graph
+    graph_obj.addNoiseToGraph(transSampler, rotSampler);
+
+    // Create initial DR chain and visualize
+    graph_obj.createInitialEstimate(submaps_reg);
+    std::cout << "Gaussian noise added to graph, press q to continue" << std::endl;
+}
+
+void optimize_graph(GraphConstructor& graph_obj, std::string outFilename, SubmapsVec& submaps_reg, benchmark::track_error_benchmark& benchmark, char* argv0, boost::filesystem::path output_path) {
+    // Save graph to output g2o file (optimization can be run with G2O)
+    graph_obj.saveG2OFile(outFilename);
+
+    // Benchmar corrupted
+    PointsT reg_map = pclToMatrixSubmap(submaps_reg);
+    PointsT reg_track = trackToMatrixSubmap(submaps_reg);
+    benchmark.add_benchmark(reg_map, reg_track, "corrupted");
+
+    // Optimize graph and save to cereal
+    google::InitGoogleLogging(argv0);
+    ceres::optimizer::MapOfPoses poses = ceres::optimizer::ceresSolver(outFilename, graph_obj.drEdges_.size());
+    ceres::optimizer::updateSubmapsCeres(poses, submaps_reg);
+    std::cout << "Output cereal: " << boost::filesystem::basename(output_path) << std::endl;
+    std::ofstream os(boost::filesystem::basename(output_path) + ".cereal", std::ofstream::binary);
+    {
+        cereal::BinaryOutputArchive oarchive(os);
+        oarchive(submaps_reg);
+        os.close();
+    }
+    std::cout << "Graph optimized, press q to continue" << std::endl;
+}
+
+void benchmark_optimized(SubmapsVec& submaps_reg, benchmark::track_error_benchmark& benchmark) {
+    // Benchmark Optimized
+    PointsT opt_map = pclToMatrixSubmap(submaps_reg);
+    PointsT opt_track = trackToMatrixSubmap(submaps_reg);
+    benchmark.add_benchmark(opt_map, opt_track, "optimized");
+    benchmark.print_summary();
+
+    std::string command_str = "python ../scripts/plot_results.py --initial_poses poses_original.txt --corrupted_poses poses_corrupted.txt --optimized_poses poses_optimized.txt";
+    const char *command = command_str.c_str();
+    system(command);
+}
+
 int main(int argc, char** argv){
     int i = 0;
     int viz_time = 1000000000;
@@ -98,13 +165,22 @@ int main(int argc, char** argv){
     }
     std::cout << "Number of submaps " << submaps_gt.size() << std::endl;
 
+    // Graph constructor
+    // Read training covs from folder
+    covs covs_lc;
+    boost::filesystem::path folder(folder_str);
+    if(boost::filesystem::is_directory(folder)) {
+        covs_lc = readCovsFromFiles(folder);
+    }
+    GraphConstructor graph_obj(covs_lc);
+
+    // Noise generators
+    GaussianGen transSampler, rotSampler;
+    Matrix<double, 6,6> information = generateGaussianNoise(transSampler, rotSampler);
+    
     // Benchmark GT
     benchmark::track_error_benchmark benchmark("real_data");
-    PointsT gt_map = pclToMatrixSubmap(submaps_gt);
-    PointsT gt_track = trackToMatrixSubmap(submaps_gt);
-    benchmark.add_ground_truth(gt_map, gt_track);
-    ceres::optimizer::saveOriginalTrajectory(submaps_gt); // Save original trajectory to txt
-    std::cout << "Visualizing original survey, press q to continue" << std::endl;
+    benchmark_gt(submaps_gt, benchmark);
 
     // Visualization
 #if VISUAL == 1
@@ -121,27 +197,7 @@ int main(int argc, char** argv){
     viewer.resetStoppedFlag();
 #endif
 
-    // Graph constructor
-    // Read training covs from folder
-    covs covs_lc;
-    boost::filesystem::path folder(folder_str);
-    if(boost::filesystem::is_directory(folder)) {
-        covs_lc = readCovsFromFiles(folder);
-    }
-    GraphConstructor graph_obj(covs_lc);
-
-    // GICP reg for submaps
-    SubmapRegistration gicp_reg;
-
-    // Noise generators
-    GaussianGen transSampler, rotSampler;
-    Matrix<double, 6,6> information = generateGaussianNoise(transSampler, rotSampler);
-
-    // Create SLAM solver and run offline
-    std::cout << "Building bathymetric graph with GICP submap registration" << std::endl;
-    BathySlam slam_solver(graph_obj, gicp_reg);
-    SubmapsVec submaps_reg = slam_solver.runOffline(submaps_gt, transSampler, rotSampler);
-    std::cout << "Done building graph, press q to continue" << std::endl;
+    SubmapsVec submaps_reg = build_bathymetric_graph(submaps_gt, graph_obj, transSampler, rotSampler);
 
 #if VISUAL == 1
     // Update visualizer
@@ -154,12 +210,7 @@ int main(int argc, char** argv){
     viewer.resetStoppedFlag();
 #endif
 
-    // Add noise to edges on the graph
-    graph_obj.addNoiseToGraph(transSampler, rotSampler);
-
-    // Create initial DR chain and visualize
-    graph_obj.createInitialEstimate(submaps_reg);
-    std::cout << "Gaussian noise added to graph, press q to continue" << std::endl;
+add_gaussian_noise_to_graph(graph_obj, transSampler, rotSampler, submaps_reg);
 
 #if VISUAL == 1
     visualizer->plotPoseGraphG2O(graph_obj, submaps_reg);
@@ -171,26 +222,7 @@ int main(int argc, char** argv){
     viewer.resetStoppedFlag();
 #endif
 
-    // Save graph to output g2o file (optimization can be run with G2O)
-    graph_obj.saveG2OFile(outFilename);
-
-    // Benchmar corrupted
-    PointsT reg_map = pclToMatrixSubmap(submaps_reg);
-    PointsT reg_track = trackToMatrixSubmap(submaps_reg);
-    benchmark.add_benchmark(reg_map, reg_track, "corrupted");
-
-    // Optimize graph and save to cereal
-    google::InitGoogleLogging(argv[0]);
-    ceres::optimizer::MapOfPoses poses = ceres::optimizer::ceresSolver(outFilename, graph_obj.drEdges_.size());
-    ceres::optimizer::updateSubmapsCeres(poses, submaps_reg);
-    std::cout << "Output cereal: " << boost::filesystem::basename(output_path) << std::endl;
-    std::ofstream os(boost::filesystem::basename(output_path) + ".cereal", std::ofstream::binary);
-    {
-        cereal::BinaryOutputArchive oarchive(os);
-        oarchive(submaps_reg);
-        os.close();
-    }
-    std::cout << "Graph optimized, press q to continue" << std::endl;
+optimize_graph(graph_obj, outFilename, submaps_reg, benchmark, argv[0], output_path);
 
 #if VISUAL == 1
     // Visualize Ceres output
@@ -203,15 +235,7 @@ int main(int argc, char** argv){
     delete(visualizer);
 #endif
 
-    // Benchmark Optimized
-    PointsT opt_map = pclToMatrixSubmap(submaps_reg);
-    PointsT opt_track = trackToMatrixSubmap(submaps_reg);
-    benchmark.add_benchmark(opt_map, opt_track, "optimized");
-    benchmark.print_summary();
-
-    std::string command_str = "python ../scripts/plot_results.py --initial_poses poses_original.txt --corrupted_poses poses_corrupted.txt --optimized_poses poses_optimized.txt";
-    const char *command = command_str.c_str();
-    system(command);
+    benchmark_optimized(submaps_reg, benchmark);
 
     return 0;
 }
