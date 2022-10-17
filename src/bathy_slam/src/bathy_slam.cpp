@@ -10,7 +10,7 @@ BathySlam::~BathySlam(){
 
 }
 
-SubmapsVec BathySlam::runOffline(SubmapsVec& submaps_gt, GaussianGen& transSampler, GaussianGen& rotSampler){
+SubmapsVec BathySlam::runOffline(SubmapsVec& submaps_gt, GaussianGen& transSampler, GaussianGen& rotSampler, bool add_gaussian_noise){
 
     SubmapObj submap_trg;
     SubmapsVec submaps_prev, submaps_reg;
@@ -67,7 +67,10 @@ SubmapsVec BathySlam::runOffline(SubmapsVec& submaps_gt, GaussianGen& transSampl
 
             // Register overlapping submaps
             submap_trg = gicp_reg_->constructTrgSubmap(submaps_reg, submap_i.overlaps_idx_);
-            addNoiseToSubmap(transSampler, rotSampler, submap_i); // Add disturbance to source submap
+            if (add_gaussian_noise) {
+                addNoiseToSubmap(transSampler, rotSampler, submap_i); // Add disturbance to source submap
+            }
+
             if(gicp_reg_->gicpSubmapRegistration(submap_trg, submap_i)){
                 submap_final = submap_i;
             }

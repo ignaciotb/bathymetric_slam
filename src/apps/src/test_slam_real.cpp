@@ -55,8 +55,8 @@ void benchmark_gt(SubmapsVec& submaps_gt, benchmark::track_error_benchmark& benc
     std::cout << "Visualizing original survey, press space to continue" << std::endl;
 }
 
-SubmapsVec build_bathymetric_graph(SubmapsVec& submaps_gt, GraphConstructor& graph_obj,
-GaussianGen& transSampler, GaussianGen& rotSampler) {
+SubmapsVec build_bathymetric_graph(GraphConstructor& graph_obj, SubmapsVec& submaps_gt,
+GaussianGen& transSampler, GaussianGen& rotSampler, bool add_gaussian_noise) {
 
     // GICP reg for submaps
     SubmapRegistration gicp_reg;
@@ -64,21 +64,25 @@ GaussianGen& transSampler, GaussianGen& rotSampler) {
     // Create SLAM solver and run offline
     std::cout << "Building bathymetric graph with GICP submap registration" << std::endl;
     BathySlam slam_solver(graph_obj, gicp_reg);
-    SubmapsVec submaps_reg = slam_solver.runOffline(submaps_gt, transSampler, rotSampler);
+    SubmapsVec submaps_reg = slam_solver.runOffline(submaps_gt, transSampler, rotSampler, add_gaussian_noise);
     std::cout << "Done building graph, press space to continue" << std::endl;
     return submaps_reg;
 }
 
-void add_gaussian_noise_to_graph(GraphConstructor& graph_obj, GaussianGen& transSampler, GaussianGen& rotSampler, SubmapsVec& submaps_reg) {
-    // Add noise to edges on the graph
-    graph_obj.addNoiseToGraph(transSampler, rotSampler);
-
+// Create initial graph estimates, optionally add gaussian noise if add_gaussian_noise = true
+void create_initial_graph_estimate(GraphConstructor& graph_obj, SubmapsVec& submaps_reg, GaussianGen& transSampler, GaussianGen& rotSampler, bool add_gaussian_noise) {
+    if (add_gaussian_noise) {
+        // Add noise to edges on the graph
+        graph_obj.addNoiseToGraph(transSampler, rotSampler);
+        std::cout << "Gaussian noise added to graph" << std::endl;
+    }
     // Create initial DR chain and visualize
     graph_obj.createInitialEstimate(submaps_reg);
-    std::cout << "Gaussian noise added to graph, press space to continue" << std::endl;
+    std::cout << "Initial graph estimate constructed, press space to continue" << std::endl;
+
 }
 
-void optimize_graph(GraphConstructor& graph_obj, std::string outFilename, SubmapsVec& submaps_reg, benchmark::track_error_benchmark& benchmark, char* argv0, boost::filesystem::path output_path) {
+void optimize_graph(GraphConstructor& graph_obj, SubmapsVec& submaps_reg, std::string outFilename, benchmark::track_error_benchmark& benchmark, char* argv0, boost::filesystem::path output_path) {
     // Save graph to output g2o file (optimization can be run with G2O)
     graph_obj.saveG2OFile(outFilename);
 
@@ -184,15 +188,18 @@ int main(int argc, char** argv){
     // Noise generators
     GaussianGen transSampler, rotSampler;
     Matrix<double, 6,6> information = generateGaussianNoise(transSampler, rotSampler);
+
+    // flag for adding gaussian noise to submaps and graph
+    bool add_gaussian_noise = true;
     
     // Benchmark GT
     benchmark::track_error_benchmark benchmark("real_data");
     benchmark_gt(submaps_gt, benchmark);
 
 #if VISUAL != 1
-    submaps_reg = build_bathymetric_graph(submaps_gt, graph_obj, transSampler, rotSampler);
-    add_gaussian_noise_to_graph(graph_obj, transSampler, rotSampler, submaps_reg);
-    optimize_graph(graph_obj, outFilename, submaps_reg, benchmark, argv[0], output_path);
+    submaps_reg = build_bathymetric_graph(graph_obj, submaps_gt, transSampler, rotSampler, add_gaussian_noise);
+    create_initial_graph_estimate(graph_obj, submaps_reg, transSampler, rotSampler, add_gaussian_noise);
+    optimize_graph(graph_obj, submaps_reg, outFilename, benchmark, argv[0], output_path);
     benchmark_optimized(submaps_reg, benchmark);
 #endif
 
@@ -211,15 +218,15 @@ int main(int argc, char** argv){
             switch (current_step)
             {
             case 1:
-                submaps_reg = build_bathymetric_graph(submaps_gt, graph_obj, transSampler, rotSampler);
+                submaps_reg = build_bathymetric_graph(graph_obj, submaps_gt, transSampler, rotSampler, add_gaussian_noise);
                 visualizer->updateVisualizer(submaps_reg);
                 break;
             case 2:
-                add_gaussian_noise_to_graph(graph_obj, transSampler, rotSampler, submaps_reg);
+                create_initial_graph_estimate(graph_obj, submaps_reg, transSampler, rotSampler, add_gaussian_noise);
                 visualizer->plotPoseGraphG2O(graph_obj, submaps_reg);
                 break;
             case 3:
-                optimize_graph(graph_obj, outFilename, submaps_reg, benchmark, argv[0], output_path);
+                optimize_graph(graph_obj, submaps_reg, outFilename, benchmark, argv[0], output_path);
                 // Visualize Ceres output
                 visualizer->plotPoseGraphCeres(submaps_reg);
                 break;
