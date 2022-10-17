@@ -52,7 +52,7 @@ void benchmark_gt(SubmapsVec& submaps_gt, benchmark::track_error_benchmark& benc
     PointsT gt_track = trackToMatrixSubmap(submaps_gt);
     benchmark.add_ground_truth(gt_map, gt_track);
     ceres::optimizer::saveOriginalTrajectory(submaps_gt); // Save original trajectory to txt
-    std::cout << "Visualizing original survey, press q to continue" << std::endl;
+    std::cout << "Visualizing original survey, press space to continue" << std::endl;
 }
 
 SubmapsVec build_bathymetric_graph(SubmapsVec& submaps_gt, GraphConstructor& graph_obj,
@@ -65,7 +65,7 @@ GaussianGen& transSampler, GaussianGen& rotSampler) {
     std::cout << "Building bathymetric graph with GICP submap registration" << std::endl;
     BathySlam slam_solver(graph_obj, gicp_reg);
     SubmapsVec submaps_reg = slam_solver.runOffline(submaps_gt, transSampler, rotSampler);
-    std::cout << "Done building graph, press q to continue" << std::endl;
+    std::cout << "Done building graph, press space to continue" << std::endl;
     return submaps_reg;
 }
 
@@ -75,7 +75,7 @@ void add_gaussian_noise_to_graph(GraphConstructor& graph_obj, GaussianGen& trans
 
     // Create initial DR chain and visualize
     graph_obj.createInitialEstimate(submaps_reg);
-    std::cout << "Gaussian noise added to graph, press q to continue" << std::endl;
+    std::cout << "Gaussian noise added to graph, press space to continue" << std::endl;
 }
 
 void optimize_graph(GraphConstructor& graph_obj, std::string outFilename, SubmapsVec& submaps_reg, benchmark::track_error_benchmark& benchmark, char* argv0, boost::filesystem::path output_path) {
@@ -98,7 +98,7 @@ void optimize_graph(GraphConstructor& graph_obj, std::string outFilename, Submap
         oarchive(submaps_reg);
         os.close();
     }
-    std::cout << "Graph optimized, press q to continue" << std::endl;
+    std::cout << "Graph optimized, press space to continue" << std::endl;
 }
 
 void benchmark_optimized(SubmapsVec& submaps_reg, benchmark::track_error_benchmark& benchmark) {
