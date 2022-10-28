@@ -46,8 +46,10 @@ SubmapObj SubmapRegistration::constructTrgSubmap(const SubmapsVec& submaps_set, 
 
     // Merge submaps in overlaps into submap_trg
     SubmapObj submap_trg;
+    std::cout << "Target submap consists of: ";
     for(SubmapObj submap_j: submaps_set){
         if(std::find(overlaps.begin(), overlaps.end(), submap_j.submap_id_) != overlaps.end()){
+            std::cout << submap_j.submap_id_ << ", ";
             submap_trg.submap_pcl_ += submap_j.submap_pcl_;
         }
     }
@@ -92,7 +94,9 @@ bool SubmapRegistration::gicpSubmapRegistration(SubmapObj& trg_submap, SubmapObj
     pcl::NormalEstimation<PointT, pcl::Normal> ne;
     pcl::search::KdTree<PointT>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ> ());
     ne.setSearchMethod(tree);
-    ne.setRadiusSearch(20);
+    //TODO: Set it from YAML
+    //ne.setRadiusSearch(20);
+    ne.setKSearch(100);
 
     pcl::PointCloud<pcl::Normal>::Ptr normals_src(new pcl::PointCloud<pcl::Normal>);
     ne.setInputCloud(src_pcl_ptr);
@@ -138,6 +142,11 @@ bool SubmapRegistration::gicpSubmapRegistration(SubmapObj& trg_submap, SubmapObj
     ret_tf_ =  gicp_.getFinalTransformation();
     this->transformSubmap(src_submap);
 
+    std::cout << "average cov src: " << avg_cov_src << std::endl;
+    std::cout << "average cov target: " << avg_cov_trg << std::endl;
+
+    std::cout << "ret_tf: " << ret_tf_ << std::endl;
+
     // Set GICP information matrix
     src_submap.submap_lc_info_.setZero();
     Eigen::VectorXd info_diag(4);
@@ -145,7 +154,11 @@ bool SubmapRegistration::gicpSubmapRegistration(SubmapObj& trg_submap, SubmapObj
     src_submap.submap_lc_info_.bottomRightCorner(4,4) = info_diag.asDiagonal();
 
     Eigen::Matrix3d rot = ret_tf_.topLeftCorner(3,3).cast<double>();
+    std::cout << "rot: " << rot << std::endl;
+    std::cout << "rot.T: " << rot.transpose() << std::endl;
+
     Eigen::Matrix3d gicp_cov = avg_cov_trg + rot*avg_cov_src*rot.transpose();
+    std::cout << "gicp_cov: " << gicp_cov << std::endl;
     src_submap.submap_lc_info_.topLeftCorner(2,2) = gicp_cov.topLeftCorner(2,2).inverse();
 //    std::cout << gicp_cov.topLeftCorner(3,3) << std::endl;
 

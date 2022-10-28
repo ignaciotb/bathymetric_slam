@@ -158,7 +158,8 @@ int main(int argc, char** argv){
         std::cout << "Number of pings in survey " << std_pings.size() << std::endl;
         {
             SubmapsVec traj_pings = parsePingsAUVlib(std_pings);
-            int submap_size = 100;
+            //TODO: set submap_size with YAML
+            int submap_size = 500;
             submaps_gt = createSubmaps(traj_pings, submap_size);
 
             // Filtering of submaps
@@ -190,7 +191,8 @@ int main(int argc, char** argv){
     Matrix<double, 6,6> information = generateGaussianNoise(transSampler, rotSampler);
 
     // flag for adding gaussian noise to submaps and graph
-    bool add_gaussian_noise = true;
+    //TODO: set gaussian noise flag with YAML
+    bool add_gaussian_noise = false;
     
     // Benchmark GT
     benchmark::track_error_benchmark benchmark("real_data");
