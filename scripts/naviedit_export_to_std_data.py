@@ -14,7 +14,7 @@ from auvlib.data_tools import all_data, std_data
 def process_xyz_pings_file(filepath):
     """Read a .xyz file containing info about each beam hits and return a processed dataframe
     where each row contains info for 1 MBES swath"""
-    logging.info(f'\tProcessing xyz file: {filepath}...')
+    logging.warning(f'\tProcessing xyz file: {filepath}...')
     naviedit_pings = pd.read_csv(filepath, delimiter='\t', header=0)
 
     # Aggregate xyz hits of each beam into a hits array
@@ -47,7 +47,7 @@ def process_xyz_pings_file(filepath):
 
 def process_nav_file(filepath):
     """Read a .nav file and return a processed dataframe where each row = 1 positional info with timestamps."""
-    logging.info(f'\tProcessing nav file: {filepath}...')
+    logging.warning(f'\tProcessing nav file: {filepath}...')
     naviedit_nav = pd.read_csv(filepath, header=0)
 
     # Parse string datetime values and produce a datetime object
@@ -70,7 +70,7 @@ def process_nav_file(filepath):
 def merge_pings_and_nav_df(pings_df, nav_df):
     """Merge the processed pings and navigation dataframes based on their timestamps. Return a merged dataframe
     where each row contains info about 1 MBES swath and the corresponding vehicle position in ENU coordinates."""
-    logging.info('\tMerging pings and nav df...')
+    logging.warning('\tMerging pings and nav df...')
     merged = pings_df.copy()
     merged[['easting', 'northing']] = 0
     for row_idx, row in merged.iterrows():
@@ -96,7 +96,7 @@ def merge_pings_and_nav_df(pings_df, nav_df):
 
 def construct_std_data_from_merged_df(merged_df):
     """Translate the merged_df dataframe into a list of std_data objects"""
-    logging.info('\tConstructing std_data from merged df...')
+    logging.warning('\tConstructing std_data from merged df...')
     merged_data = []
     for row_idx, row in merged_df.iterrows():
         row_data = std_data.mbes_ping()
@@ -137,7 +137,7 @@ def construct_std_data_from_naviedit_export(folder, store=True):
 
     std_data_dict = {}
     for i, filename in enumerate(filenames):
-        logging.info(f'Processing {i}/{len(filenames)} file {filename}...')
+        logging.warning(f'Processing {i}/{len(filenames)} file {filename}...')
         pings_df = process_xyz_pings_file(
             os.path.join(folder, f'{filename}.xyz'))
         nav_df = process_nav_file(os.path.join(folder, f'{filename}.nav'))
