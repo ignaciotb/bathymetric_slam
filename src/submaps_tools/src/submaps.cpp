@@ -53,7 +53,7 @@ Eigen::Matrix<double, 6, 6> SubmapObj::createDRWeights(){
     noiseTranslation.push_back(0.0001);
     noiseRotation.push_back(0.0001);
     noiseRotation.push_back(0.0001);
-    noiseRotation.push_back(0.1);
+    noiseRotation.push_back(0.0001);
 
     Eigen::Matrix3d transNoise = Eigen::Matrix3d::Zero();
     for (int i = 0; i < 3; ++i)
