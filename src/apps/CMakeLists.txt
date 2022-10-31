@@ -21,6 +21,7 @@ target_link_libraries(bathy_slam_real
    benchmark
    std_data
    slam_solver
+   ${YAML_CPP_LIBRARIES}
 )
 
 add_executable(read_auv_data

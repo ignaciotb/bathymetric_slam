@@ -30,6 +30,7 @@ find_package(Eigen3 REQUIRED)
 find_package(PCL 1.8 REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(g2o REQUIRED)
+find_package(yaml-cpp)
 
 # AUVLIB stuff
 #  find_package(LIBIGL REQUIRED QUIET)
@@ -53,6 +54,7 @@ include_directories(
 	${G2O_INCLUDE_DIRS} 
 	${PCL_INCLUDE_DIRS}
   ${OPENCV_INCLUDE_DIRS}
+  ${yaml_cpp_INCLUDE_DIRS}
 )
 
 LIST(APPEND G2O_LIBS

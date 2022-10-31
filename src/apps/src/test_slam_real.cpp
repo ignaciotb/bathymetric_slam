@@ -35,6 +35,9 @@
 
 #include <pcl/filters/uniform_sampling.h>
 
+#include "yaml-cpp/parser.h"
+#include "yaml-cpp/yaml.h"
+
 #define INTERACTIVE 0
 #define VISUAL 1
 
@@ -126,13 +129,14 @@ void keyboardEventOccurred(const pcl::visualization::KeyboardEvent& event, void*
 
 int main(int argc, char** argv){
     // Inputs
-    std::string folder_str, path_str, output_str, simulation;
+    std::string folder_str, path_str, output_str, simulation, config_path;
     cxxopts::Options options("MyProgram", "One line description of MyProgram");
     options.add_options()
         ("help", "Print help")
         ("simulation", "Simulation data from Gazebo", cxxopts::value(simulation))
         ("bathy_survey", "Input MBES pings in cereal file if simulation = no. If in simulation"
-                          "input path to map_small folder", cxxopts::value(path_str));
+                          "input path to map_small folder", cxxopts::value(path_str))
+        ("config", "YAML config file", cxxopts::value(config_path));
 
     auto result = options.parse(argc, argv);
     if (result.count("help")) {
@@ -144,6 +148,8 @@ int main(int argc, char** argv){
     }
     boost::filesystem::path output_path(output_str);
     string outFilename = "graph_corrupted.g2o";   // G2O output file
+    YAML::Node config = YAML::LoadFile(config_path);
+    std::cout << "Config file: " << config_path << std::endl;
 
     // Parse submaps from cereal file
     boost::filesystem::path submaps_path(path_str);
