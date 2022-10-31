@@ -1,0 +1,15 @@
+# Bathy SLAM params
+submap_size: 500 # nbr_pings per submap
+add_gaussian_noise: false
+
+# Submap overlaps
+overlap_coverage: 0.9 # Reduce submap area to look for overlap by this factor
+
+
+# GICP registration params (meters)
+gicp_max_correspondence_distance: 10
+gicp_maximum_iterations: 100
+gicp_transform_epsilon: 1e-4
+gicp_euclidean_fitness_epsilon: 1e-4
+gicp_ransac_outlier_rejection_threshold: 1
+gicp_normal_search_radius: 20
