@@ -35,9 +35,6 @@
 
 #include <pcl/filters/uniform_sampling.h>
 
-#include "yaml-cpp/parser.h"
-#include "yaml-cpp/yaml.h"
-
 #define INTERACTIVE 0
 #define VISUAL 1
 
@@ -59,7 +56,7 @@ void benchmark_gt(SubmapsVec& submaps_gt, benchmark::track_error_benchmark& benc
 }
 
 SubmapsVec build_bathymetric_graph(GraphConstructor& graph_obj, SubmapsVec& submaps_gt,
-GaussianGen& transSampler, GaussianGen& rotSampler, bool add_gaussian_noise) {
+GaussianGen& transSampler, GaussianGen& rotSampler, YAML::Node config) {
 
     // GICP reg for submaps
     SubmapRegistration gicp_reg;
@@ -67,7 +64,8 @@ GaussianGen& transSampler, GaussianGen& rotSampler, bool add_gaussian_noise) {
     // Create SLAM solver and run offline
     std::cout << "Building bathymetric graph with GICP submap registration" << std::endl;
     BathySlam slam_solver(graph_obj, gicp_reg);
-    SubmapsVec submaps_reg = slam_solver.runOffline(submaps_gt, transSampler, rotSampler, add_gaussian_noise);
+    SubmapsVec submaps_reg = slam_solver.runOffline(submaps_gt, transSampler, rotSampler, config["add_gaussian_noise"].as<bool>(),
+        config["overlap_coverage"].as<double>());
     std::cout << "Done building graph, press space to continue" << std::endl;
     return submaps_reg;
 }
@@ -164,8 +162,7 @@ int main(int argc, char** argv){
         std::cout << "Number of pings in survey " << std_pings.size() << std::endl;
         {
             SubmapsVec traj_pings = parsePingsAUVlib(std_pings);
-            //TODO: set submap_size with YAML
-            int submap_size = 500;
+            int submap_size = config["submap_size"].as<int>();
             submaps_gt = createSubmaps(traj_pings, submap_size);
 
             // Filtering of submaps
@@ -197,8 +194,7 @@ int main(int argc, char** argv){
     Matrix<double, 6,6> information = generateGaussianNoise(transSampler, rotSampler);
 
     // flag for adding gaussian noise to submaps and graph
-    //TODO: set gaussian noise flag with YAML
-    bool add_gaussian_noise = false;
+    bool add_gaussian_noise = config["add_gaussian_noise"].as<bool>();
     
     // Benchmark GT
     benchmark::track_error_benchmark benchmark("real_data");
@@ -226,7 +222,7 @@ int main(int argc, char** argv){
             switch (current_step)
             {
             case 1:
-                submaps_reg = build_bathymetric_graph(graph_obj, submaps_gt, transSampler, rotSampler, add_gaussian_noise);
+                submaps_reg = build_bathymetric_graph(graph_obj, submaps_gt, transSampler, rotSampler, config);
                 visualizer->updateVisualizer(submaps_reg);
                 break;
             case 2:

@@ -10,7 +10,7 @@ BathySlam::~BathySlam(){
 
 }
 
-SubmapsVec BathySlam::runOffline(SubmapsVec& submaps_gt, GaussianGen& transSampler, GaussianGen& rotSampler, bool add_gaussian_noise){
+SubmapsVec BathySlam::runOffline(SubmapsVec& submaps_gt, GaussianGen& transSampler, GaussianGen& rotSampler, bool add_gaussian_noise, double overlap_coverage){
 
     SubmapObj submap_trg;
     SubmapsVec submaps_prev, submaps_reg;
@@ -31,7 +31,7 @@ SubmapsVec BathySlam::runOffline(SubmapsVec& submaps_gt, GaussianGen& transSampl
         }
 	// Submaps in map_frame?
 	bool submaps_in_map_tf = true;
-        submap_i.findOverlaps(submaps_in_map_tf, submaps_prev);
+        submap_i.findOverlaps(submaps_in_map_tf, submaps_prev, overlap_coverage);
         submaps_prev.clear();
 
     #if INTERACTIVE == 1

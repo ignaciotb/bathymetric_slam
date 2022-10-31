@@ -11,6 +11,7 @@
 
 #include "registration/gicp_reg.hpp"
 
+
 using namespace std;
 using namespace Eigen;
 using PointsT = std::vector<Eigen::MatrixXd, Eigen::aligned_allocator<Eigen::MatrixXd>>;
@@ -40,6 +41,15 @@ SubmapRegistration::SubmapRegistration(){
 
 SubmapRegistration::~SubmapRegistration(){
 
+}
+
+void SubmapRegistration::loadConfig(YAML::Node config){
+    gicp_.setMaxCorrespondenceDistance(config["gicp_max_correspondence_distance"].as<double>());
+    gicp_.setMaximumIterations(config["gicp_maximum_iterations"].as<int>());
+    gicp_.setTransformationEpsilon(config["gicp_transform_epsilon"].as<double>());
+    gicp_.setEuclideanFitnessEpsilon(config["gicp_euclidean_fitness_epsilon"].as<double>());
+    gicp_.setRANSACOutlierRejectionThreshold(config["gicp_ransac_outlier_rejection_threshold"].as<double>());
+    normal_search_radius = config["gicp_normal_search_radius"].as<double>();
 }
 
 SubmapObj SubmapRegistration::constructTrgSubmap(const SubmapsVec& submaps_set, std::vector<int>& overlaps){
@@ -94,9 +104,8 @@ bool SubmapRegistration::gicpSubmapRegistration(SubmapObj& trg_submap, SubmapObj
     pcl::NormalEstimation<PointT, pcl::Normal> ne;
     pcl::search::KdTree<PointT>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ> ());
     ne.setSearchMethod(tree);
-    //TODO: Set it from YAML
-    //ne.setRadiusSearch(20);
-    ne.setKSearch(100);
+    ne.setRadiusSearch(normal_search_radius);
+    //ne.setKSearch(100);
 
     pcl::PointCloud<pcl::Normal>::Ptr normals_src(new pcl::PointCloud<pcl::Normal>);
     ne.setInputCloud(src_pcl_ptr);

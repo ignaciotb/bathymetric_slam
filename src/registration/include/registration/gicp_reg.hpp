@@ -28,6 +28,9 @@
 
 #include "data_tools/benchmark.h"
 
+#include "yaml-cpp/parser.h"
+#include "yaml-cpp/yaml.h"
+
 typedef std::vector<Eigen::Matrix3d, Eigen::aligned_allocator<Eigen::Matrix3d> > CovsVec;
 typedef std::shared_ptr <CovsVec > CovsVecPtr;
 
@@ -37,10 +40,13 @@ private:
     pcl::GeneralizedIterativeClosestPoint<PointT, PointT> gicp_;
     Eigen::Matrix4f ret_tf_;
     benchmark::track_error_benchmark benchmark_;
+    double normal_search_radius=20;
 
 public:
 
     SubmapRegistration();
+
+    void loadConfig(YAML::Node config);
 
     bool gicpSubmapRegistration(SubmapObj &trg_submap, SubmapObj &src_submap);
 

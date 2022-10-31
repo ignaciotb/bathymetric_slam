@@ -73,15 +73,15 @@ Eigen::Matrix<double, 6, 6> SubmapObj::createDRWeights(){
 }
 
 void SubmapObj::findOverlaps(bool submaps_in_map_tf,
-    std::vector<SubmapObj, Eigen::aligned_allocator<SubmapObj> > &submaps_set){
+    std::vector<SubmapObj, Eigen::aligned_allocator<SubmapObj> > &submaps_set, double overlap_coverage){
 
     overlaps_idx_.clear();
 
     std::vector<std::pair<int, corners>> corners_set;
-    corners submap_i_corners = std::get<1>(getSubmapCorners(submaps_in_map_tf, *this));
+    corners submap_i_corners = std::get<1>(getSubmapCorners(submaps_in_map_tf, *this, overlap_coverage));
     // Extract corners of all submaps
     for(SubmapObj& submap_j: submaps_set){
-        corners_set.push_back(getSubmapCorners(submaps_in_map_tf, submap_j));
+        corners_set.push_back(getSubmapCorners(submaps_in_map_tf, submap_j, overlap_coverage));
     }
 
     bool overlap_flag;
@@ -96,7 +96,7 @@ void SubmapObj::findOverlaps(bool submaps_in_map_tf,
 }
 
 
-std::pair<int, corners> getSubmapCorners(bool submaps_in_map_tf, const SubmapObj& submap){
+std::pair<int, corners> getSubmapCorners(bool submaps_in_map_tf, const SubmapObj& submap, double overlap_coverage){
 
     // Transform point cloud back to map frame
     Eigen::MatrixXf points;
@@ -111,7 +111,6 @@ std::pair<int, corners> getSubmapCorners(bool submaps_in_map_tf, const SubmapObj
 
     // Extract corners
     double min_x, min_y, max_x, max_y;
-    double overlap_coverage = 0.6; // Reduce submap area to look for overlap by this factor
     min_x = points.col(0).minCoeff() * overlap_coverage;   // min x
     min_y = points.col(1).minCoeff() * overlap_coverage;   // min y
     max_x = points.col(0).maxCoeff() * overlap_coverage;   // max x
@@ -542,8 +541,8 @@ void transformSubmapObj(SubmapObj& submap, Eigen::Isometry3f& poseDRt){
 
 }
 
-bool checkSubmapSize(const SubmapObj& submap_i){
-    std::pair<int, corners> submap_corners = getSubmapCorners(true, submap_i);
+bool checkSubmapSize(const SubmapObj& submap_i, double overlap_coverage){
+    std::pair<int, corners> submap_corners = getSubmapCorners(true, submap_i, overlap_coverage);
     double grid_x, grid_y;
     unsigned int k_next;
     bool reject = false;

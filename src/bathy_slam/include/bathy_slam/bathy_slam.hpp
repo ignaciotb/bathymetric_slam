@@ -18,7 +18,8 @@ public:
     BathySlam(GraphConstructor& graph_obj, SubmapRegistration& gicp_reg);
     ~BathySlam();
 
-    SubmapsVec runOffline(SubmapsVec &submaps_gt, GaussianGen &transSampler, GaussianGen &rotSampler, bool add_gaussian_noise);
+    SubmapsVec runOffline(SubmapsVec &submaps_gt, GaussianGen &transSampler, GaussianGen &rotSampler, bool add_gaussian_noise,
+    double overlap_coverage);
 };
 
 

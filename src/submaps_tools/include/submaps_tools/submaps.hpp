@@ -29,6 +29,9 @@
 
 #include <boost/algorithm/string.hpp>
 
+#include "yaml-cpp/parser.h"
+#include "yaml-cpp/yaml.h"
+
 using namespace std;
 using namespace Eigen;
 typedef std::vector<Eigen::MatrixXd, Eigen::aligned_allocator<Eigen::MatrixXd>> PointsT;
@@ -57,7 +60,7 @@ public:
 
     SubmapObj(const unsigned int& submap_id, const unsigned int& swath_id, PointCloudT& submap_pcl);
 
-    void findOverlaps(bool submaps_in_map_tf, std::vector<SubmapObj, Eigen::aligned_allocator<SubmapObj> > &submaps_set);
+    void findOverlaps(bool submaps_in_map_tf, std::vector<SubmapObj, Eigen::aligned_allocator<SubmapObj> > &submaps_set, double overlap_coverage);
 
     Eigen::Matrix<double, 6, 6> createDRWeights();
 
@@ -120,13 +123,13 @@ SubmapsVec createMap(SubmapsVec& pings, int submap_size);
 
 void transformSubmapObj(SubmapObj& submap, Isometry3f& poseDRt);
 
-std::pair<int, corners> getSubmapCorners(bool submaps_in_map_tf, const SubmapObj& submap);
+std::pair<int, corners> getSubmapCorners(bool submaps_in_map_tf, const SubmapObj& submap, double overlap_coverage);
 
 bool checkSubmapsOverlap(const corners submap_i_corners, const corners submap_k_corners);
 
 bool pointToLine(const Vector3d seg_a, const Vector3d seg_b, const Vector3d point_c);
 
-bool checkSubmapSize(const SubmapObj& submap_i);
+bool checkSubmapSize(const SubmapObj& submap_i, double overlap_coverage);
 
 template <typename T> int sgn(T val) {
     return (T(0) < val) - (val < T(0));
