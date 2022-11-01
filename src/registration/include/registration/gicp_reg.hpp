@@ -40,7 +40,9 @@ private:
     pcl::GeneralizedIterativeClosestPoint<PointT, PointT> gicp_;
     Eigen::Matrix4f ret_tf_;
     benchmark::track_error_benchmark benchmark_;
-    double normal_search_radius=20;
+    bool normal_use_knn_search;
+    double normal_search_radius;
+    int normal_search_k_neighbours;
 
 public:
 

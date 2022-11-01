@@ -49,7 +49,9 @@ void SubmapRegistration::loadConfig(YAML::Node config){
     gicp_.setTransformationEpsilon(config["gicp_transform_epsilon"].as<double>());
     gicp_.setEuclideanFitnessEpsilon(config["gicp_euclidean_fitness_epsilon"].as<double>());
     gicp_.setRANSACOutlierRejectionThreshold(config["gicp_ransac_outlier_rejection_threshold"].as<double>());
+    normal_use_knn_search = config["gicp_normal_use_knn_search"].as<bool>();
     normal_search_radius = config["gicp_normal_search_radius"].as<double>();
+    normal_search_k_neighbours = config["gicp_normal_search_k_neighbours"].as<int>();
 }
 
 SubmapObj SubmapRegistration::constructTrgSubmap(const SubmapsVec& submaps_set, std::vector<int>& overlaps, const DRNoise& dr_noise){
@@ -104,8 +106,11 @@ bool SubmapRegistration::gicpSubmapRegistration(SubmapObj& trg_submap, SubmapObj
     pcl::NormalEstimation<PointT, pcl::Normal> ne;
     pcl::search::KdTree<PointT>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ> ());
     ne.setSearchMethod(tree);
-    ne.setRadiusSearch(normal_search_radius);
-    //ne.setKSearch(100);
+    if (normal_use_knn_search) {
+        ne.setKSearch(normal_search_k_neighbours);
+    } else {
+        ne.setRadiusSearch(normal_search_radius);
+    }
 
     pcl::PointCloud<pcl::Normal>::Ptr normals_src(new pcl::PointCloud<pcl::Normal>);
     ne.setInputCloud(src_pcl_ptr);

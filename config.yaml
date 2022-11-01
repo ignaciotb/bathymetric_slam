@@ -12,7 +12,9 @@ gicp_maximum_iterations: 100
 gicp_transform_epsilon: 1e-4
 gicp_euclidean_fitness_epsilon: 1e-4
 gicp_ransac_outlier_rejection_threshold: 1
-gicp_normal_search_radius: 20
+gicp_normal_use_knn_search: false
+gicp_normal_search_radius: 20 # used if gicp_normal_use_knn_search = false
+gicp_normal_search_k_neighbours: 100 # used if gicp_normal_use_knn_search = true
 
 # DR weights - uncertainty on vehicle navigation across submap
 dr_noise_x: 3.
