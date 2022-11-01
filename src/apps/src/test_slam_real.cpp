@@ -64,8 +64,7 @@ GaussianGen& transSampler, GaussianGen& rotSampler, YAML::Node config) {
     // Create SLAM solver and run offline
     std::cout << "Building bathymetric graph with GICP submap registration" << std::endl;
     BathySlam slam_solver(graph_obj, gicp_reg);
-    SubmapsVec submaps_reg = slam_solver.runOffline(submaps_gt, transSampler, rotSampler, config["add_gaussian_noise"].as<bool>(),
-        config["overlap_coverage"].as<double>(), loadDRNoiseFromFile(config));
+    SubmapsVec submaps_reg = slam_solver.runOffline(submaps_gt, transSampler, rotSampler, config);
     std::cout << "Done building graph, press space to continue" << std::endl;
     return submaps_reg;
 }

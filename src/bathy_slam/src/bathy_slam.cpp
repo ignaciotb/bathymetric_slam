@@ -10,9 +10,8 @@ BathySlam::~BathySlam(){
 
 }
 
-SubmapsVec BathySlam::runOffline(SubmapsVec& submaps_gt, GaussianGen& transSampler, GaussianGen& rotSampler, bool add_gaussian_noise, double overlap_coverage,
-const DRNoise& dr_noise){
-
+SubmapsVec BathySlam::runOffline(SubmapsVec& submaps_gt, GaussianGen& transSampler, GaussianGen& rotSampler, YAML::Node config){
+    DRNoise dr_noise = loadDRNoiseFromFile(config);
     SubmapObj submap_trg(dr_noise);
     SubmapsVec submaps_prev, submaps_reg;
     ofstream fileOutputStream;
@@ -32,7 +31,7 @@ const DRNoise& dr_noise){
         }
 	// Submaps in map_frame?
 	bool submaps_in_map_tf = true;
-        submap_i.findOverlaps(submaps_in_map_tf, submaps_prev, overlap_coverage);
+        submap_i.findOverlaps(submaps_in_map_tf, submaps_prev, config["overlap_coverage"].as<double>());
         submaps_prev.clear();
 
     #if INTERACTIVE == 1
@@ -68,7 +67,7 @@ const DRNoise& dr_noise){
 
             // Register overlapping submaps
             submap_trg = gicp_reg_->constructTrgSubmap(submaps_reg, submap_i.overlaps_idx_, dr_noise);
-            if (add_gaussian_noise) {
+            if (config["add_gaussian_noise"].as<bool>()) {
                 addNoiseToSubmap(transSampler, rotSampler, submap_i); // Add disturbance to source submap
             }
 
@@ -78,6 +77,7 @@ const DRNoise& dr_noise){
             submap_trg.submap_pcl_.clear();
 
             // Create loop closures
+            graph_obj_->edge_covs_type_ = config["lc_edge_covs_type"].as<int>();
             graph_obj_->findLoopClosures(submap_final, submaps_reg, info_thres);
         }
         submaps_reg.push_back(submap_final);    // Add registered submap_i
