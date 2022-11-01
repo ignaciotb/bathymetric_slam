@@ -33,7 +33,7 @@
 
 #include "bathy_slam/bathy_slam.hpp"
 
-#include <pcl/filters/uniform_sampling.h>
+#include <pcl/filters/voxel_grid.h>
 
 #define INTERACTIVE 0
 #define VISUAL 1
@@ -168,13 +168,15 @@ int main(int argc, char** argv){
 
             // Filtering of submaps
             PointCloudT::Ptr cloud_ptr (new PointCloudT);
-            pcl::UniformSampling<PointT> us_filter;
-            us_filter.setInputCloud (cloud_ptr);
-            us_filter.setRadiusSearch(2);
+            pcl::VoxelGrid<PointT> voxel_grid_filter;
+            voxel_grid_filter.setInputCloud (cloud_ptr);
+            voxel_grid_filter.setLeafSize(config["downsampling_leaf_x"].as<double>(),
+                                          config["downsampling_leaf_y"].as<double>(),
+                                          config["downsampling_leaf_z"].as<double>());
             for(SubmapObj& submap_i: submaps_gt){
                 *cloud_ptr = submap_i.submap_pcl_;
-                us_filter.setInputCloud(cloud_ptr);
-                us_filter.filter(*cloud_ptr);
+                voxel_grid_filter.setInputCloud(cloud_ptr);
+                voxel_grid_filter.filter(*cloud_ptr);
                 submap_i.submap_pcl_ = *cloud_ptr;
             }
         }

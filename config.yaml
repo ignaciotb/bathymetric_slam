@@ -1,3 +1,8 @@
+# Point cloud downsampling (m)
+downsampling_leaf_x: 10.
+downsampling_leaf_y: 10.
+downsampling_leaf_z: .5
+
 # Bathy SLAM params
 submap_size: 500 # nbr_pings per submap
 add_gaussian_noise: false
