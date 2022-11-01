@@ -14,21 +14,23 @@
 
 using namespace Eigen;
 
-MapObj::MapObj(){
-
+DRNoise loadDRNoiseFromFile(YAML::Node config) {
+    return DRNoise{
+        .x=config["dr_noise_x"].as<double>(),
+        .y=config["dr_noise_y"].as<double>(),
+        .z=config["dr_noise_z"].as<double>(),
+        .roll=config["dr_noise_roll"].as<double>(),
+        .pitch=config["dr_noise_pitch"].as<double>(),
+        .yaw=config["dr_noise_yaw"].as<double>(),
+    };
 }
 
-MapObj::MapObj(PointCloudT& map_pcl){
+SubmapObj::SubmapObj(const DRNoise& dr_noise){
 
+    submap_info_ = createDRWeights(dr_noise);
 }
 
-
-SubmapObj::SubmapObj(){
-
-    submap_info_ = createDRWeights();
-}
-
-SubmapObj::SubmapObj(const unsigned int& submap_id, const unsigned int& swath_id, PointCloudT& submap_pcl):
+SubmapObj::SubmapObj(const unsigned int& submap_id, const unsigned int& swath_id, PointCloudT& submap_pcl, const DRNoise& dr_noise):
             submap_id_(submap_id), swath_id_(swath_id), submap_pcl_(submap_pcl){
 
     // AUV pose estimate while acquiring submap
@@ -40,20 +42,20 @@ SubmapObj::SubmapObj(const unsigned int& submap_id, const unsigned int& swath_id
     submap_pcl_.sensor_orientation_ = Eigen::Quaternionf(0,0,0,0);
     pcl::transformPointCloud(submap_pcl_, submap_pcl_, submap_tf_.matrix());
 
-    submap_info_ = createDRWeights();
+    submap_info_ = createDRWeights(dr_noise);
 }
 
-Eigen::Matrix<double, 6, 6> SubmapObj::createDRWeights(){
+Eigen::Matrix<double, 6, 6> SubmapObj::createDRWeights(const DRNoise& dr_noise){
 
     // Uncertainty on vehicle nav across submaps (assuming here that each has a similar length)
     std::vector<double> noiseTranslation;
     std::vector<double> noiseRotation;
-    noiseTranslation.push_back(3);
-    noiseTranslation.push_back(3);
-    noiseTranslation.push_back(0.0001);
-    noiseRotation.push_back(0.0001);
-    noiseRotation.push_back(0.0001);
-    noiseRotation.push_back(0.0001);
+    noiseTranslation.push_back(dr_noise.x);
+    noiseTranslation.push_back(dr_noise.y);
+    noiseTranslation.push_back(dr_noise.z);
+    noiseRotation.push_back(dr_noise.roll);
+    noiseRotation.push_back(dr_noise.pitch);
+    noiseRotation.push_back(dr_noise.yaw);
 
     Eigen::Matrix3d transNoise = Eigen::Matrix3d::Zero();
     for (int i = 0; i < 3; ++i)
@@ -190,7 +192,7 @@ std::vector<std::string> checkFilesInDir(DIR *dir){
 }
 
 
-std::vector<SubmapObj, Eigen::aligned_allocator<SubmapObj>> readSubmapsInDir(const string& dir_path){
+std::vector<SubmapObj, Eigen::aligned_allocator<SubmapObj>> readSubmapsInDir(const string& dir_path, const DRNoise& dr_noise){
 
     std::vector<SubmapObj, Eigen::aligned_allocator<SubmapObj>> submaps_set;
     DIR *dir;
@@ -215,7 +217,7 @@ std::vector<SubmapObj, Eigen::aligned_allocator<SubmapObj>> readSubmapsInDir(con
                 swath_cnt = swath_cnt + 1;
                 prev_direction = euler[2];
             }
-            SubmapObj submap_i(submap_cnt, swath_cnt, *submap_ptr);
+            SubmapObj submap_i(submap_cnt, swath_cnt, *submap_ptr, dr_noise);
 
             // Add AUV track to submap object
             submap_i.auv_tracks_.conservativeResize(submap_i.auv_tracks_.rows()+1, 3);
@@ -272,7 +274,7 @@ Eigen::Array3f computeInfoInSubmap(const SubmapObj& submap){
     return cond_num;
 }
 
-SubmapsVec parsePingsAUVlib(std_data::mbes_ping::PingsT& pings){
+SubmapsVec parsePingsAUVlib(std_data::mbes_ping::PingsT& pings, const DRNoise& dr_noise){
 
     SubmapsVec pings_subs;
     std::cout << std::fixed;
@@ -310,7 +312,7 @@ SubmapsVec parsePingsAUVlib(std_data::mbes_ping::PingsT& pings){
                 std::cout << "Map reference frame " << world_map_tf.translation().transpose() << std::endl;
             }
 
-            SubmapObj ping_sub;
+            SubmapObj ping_sub = SubmapObj(dr_noise);
             for (Vector3d& p : ping.beams) {
                 p = world_map_tf.linear().transpose() * p
                         - world_map_tf.linear().transpose() * world_map_tf.translation();
@@ -333,7 +335,7 @@ SubmapsVec parsePingsAUVlib(std_data::mbes_ping::PingsT& pings){
     return pings_subs;
 }
 
-SubmapsVec createSubmaps(SubmapsVec& pings, int submap_size){
+SubmapsVec createSubmaps(SubmapsVec& pings, int submap_size, const DRNoise& dr_noise){
 
     SubmapsVec submaps_vec;
     std::vector<Eigen::Isometry3f, Eigen::aligned_allocator<Eigen::Isometry3f>> pings_tfs;
@@ -341,7 +343,7 @@ SubmapsVec createSubmaps(SubmapsVec& pings, int submap_size){
     int cnt = 0;
     int submap_cnt = 0;
     int swath_cnt = 0;
-    SubmapObj* submap_k = new SubmapObj;
+    SubmapObj* submap_k = new SubmapObj(dr_noise);
     for(SubmapObj& ping_i: pings){
         submap_k->submap_pcl_ += ping_i.submap_pcl_;
         pings_tfs.push_back(ping_i.submap_tf_);
@@ -372,7 +374,7 @@ SubmapsVec createSubmaps(SubmapsVec& pings, int submap_size){
 
             submaps_vec.push_back(*submap_k);
             delete submap_k;
-            submap_k = new SubmapObj;
+            submap_k = new SubmapObj(dr_noise);
         }
     }
     delete auv_track;
@@ -380,7 +382,7 @@ SubmapsVec createSubmaps(SubmapsVec& pings, int submap_size){
     return submaps_vec;
 }
 
-SubmapsVec createMap(SubmapsVec& pings, int submap_size){
+SubmapsVec createMap(SubmapsVec& pings, int submap_size, const DRNoise& dr_noise){
 
     SubmapsVec submaps_vec;
     std::vector<Eigen::Isometry3f, Eigen::aligned_allocator<Eigen::Isometry3f>> pings_tfs;
@@ -388,7 +390,7 @@ SubmapsVec createMap(SubmapsVec& pings, int submap_size){
     int cnt = 0;
     int submap_cnt = 0;
     int swath_cnt = 0;
-    SubmapObj* submap_k = new SubmapObj;
+    SubmapObj* submap_k = new SubmapObj(dr_noise);
     for(SubmapObj& ping_i: pings){
         submap_k->submap_pcl_ += ping_i.submap_pcl_;
         pings_tfs.push_back(ping_i.submap_tf_);
@@ -419,7 +421,7 @@ SubmapsVec createMap(SubmapsVec& pings, int submap_size){
 
             submaps_vec.push_back(*submap_k);
             delete submap_k;
-            submap_k = new SubmapObj;
+            submap_k = new SubmapObj(dr_noise);
         }
     }
     delete auv_track;
@@ -427,7 +429,7 @@ SubmapsVec createMap(SubmapsVec& pings, int submap_size){
     return submaps_vec;
 }
 
-SubmapsVec parseSubmapsAUVlib(std_data::pt_submaps& ss){
+SubmapsVec parseSubmapsAUVlib(std_data::pt_submaps& ss, const DRNoise& dr_noise){
 
     SubmapsVec submaps_set;
     std::cout << std::fixed;
@@ -440,7 +442,7 @@ SubmapsVec parseSubmapsAUVlib(std_data::pt_submaps& ss){
     Isometry3d map_tf;
     Isometry3d submap_tf;
     for(unsigned int k=0; k<ss.points.size(); k++){
-        SubmapObj submap_k;
+        SubmapObj submap_k = SubmapObj(dr_noise);
         submap_k.submap_id_ = submap_id++;
         swath_cnt_prev = swath_cnt;
 
@@ -489,9 +491,9 @@ SubmapsVec parseSubmapsAUVlib(std_data::pt_submaps& ss){
     return submaps_set;
 }
 
-std::tuple<MapObj, Eigen::Isometry3d>parseMapAUVlib(std_data::pt_submaps& ss){
+std::tuple<MapObj, Eigen::Isometry3d>parseMapAUVlib(std_data::pt_submaps& ss, const DRNoise& dr_noise){
 
-    MapObj map_j;
+    MapObj map_j(dr_noise);
     Isometry3d map_tf;
     Isometry3d submap_tf;
     for(unsigned int k=0; k<ss.points.size(); k++){

@@ -65,7 +65,7 @@ GaussianGen& transSampler, GaussianGen& rotSampler, YAML::Node config) {
     std::cout << "Building bathymetric graph with GICP submap registration" << std::endl;
     BathySlam slam_solver(graph_obj, gicp_reg);
     SubmapsVec submaps_reg = slam_solver.runOffline(submaps_gt, transSampler, rotSampler, config["add_gaussian_noise"].as<bool>(),
-        config["overlap_coverage"].as<double>());
+        config["overlap_coverage"].as<double>(), loadDRNoiseFromFile(config));
     std::cout << "Done building graph, press space to continue" << std::endl;
     return submaps_reg;
 }
@@ -146,8 +146,10 @@ int main(int argc, char** argv){
     }
     boost::filesystem::path output_path(output_str);
     string outFilename = "graph_corrupted.g2o";   // G2O output file
+
     YAML::Node config = YAML::LoadFile(config_path);
     std::cout << "Config file: " << config_path << std::endl;
+    DRNoise dr_noise = loadDRNoiseFromFile(config);
 
     // Parse submaps from cereal file
     boost::filesystem::path submaps_path(path_str);
@@ -155,15 +157,15 @@ int main(int argc, char** argv){
 
     SubmapsVec submaps_gt, submaps_reg;
     if(simulation == "yes"){
-        submaps_gt = readSubmapsInDir(submaps_path.string());
+        submaps_gt = readSubmapsInDir(submaps_path.string(), dr_noise);
     }
     else{
         std_data::mbes_ping::PingsT std_pings = std_data::read_data<std_data::mbes_ping::PingsT>(submaps_path);
         std::cout << "Number of pings in survey " << std_pings.size() << std::endl;
         {
-            SubmapsVec traj_pings = parsePingsAUVlib(std_pings);
+            SubmapsVec traj_pings = parsePingsAUVlib(std_pings, dr_noise);
             int submap_size = config["submap_size"].as<int>();
-            submaps_gt = createSubmaps(traj_pings, submap_size);
+            submaps_gt = createSubmaps(traj_pings, submap_size, dr_noise);
 
             // Filtering of submaps
             PointCloudT::Ptr cloud_ptr (new PointCloudT);

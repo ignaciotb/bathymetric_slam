@@ -13,3 +13,11 @@ gicp_transform_epsilon: 1e-4
 gicp_euclidean_fitness_epsilon: 1e-4
 gicp_ransac_outlier_rejection_threshold: 1
 gicp_normal_search_radius: 20
+
+# DR weights - uncertainty on vehicle navigation across submap
+dr_noise_x: 3.
+dr_noise_y: 3.
+dr_noise_z: 1e-4
+dr_noise_roll: 1e-4
+dr_noise_pitch: 1e-4
+dr_noise_yaw: 1e-4

@@ -19,7 +19,7 @@ public:
     ~BathySlam();
 
     SubmapsVec runOffline(SubmapsVec &submaps_gt, GaussianGen &transSampler, GaussianGen &rotSampler, bool add_gaussian_noise,
-    double overlap_coverage);
+    double overlap_coverage, const DRNoise& dr_noise);
 };
 
 

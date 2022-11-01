@@ -10,9 +10,10 @@ BathySlam::~BathySlam(){
 
 }
 
-SubmapsVec BathySlam::runOffline(SubmapsVec& submaps_gt, GaussianGen& transSampler, GaussianGen& rotSampler, bool add_gaussian_noise, double overlap_coverage){
+SubmapsVec BathySlam::runOffline(SubmapsVec& submaps_gt, GaussianGen& transSampler, GaussianGen& rotSampler, bool add_gaussian_noise, double overlap_coverage,
+const DRNoise& dr_noise){
 
-    SubmapObj submap_trg;
+    SubmapObj submap_trg(dr_noise);
     SubmapsVec submaps_prev, submaps_reg;
     ofstream fileOutputStream;
     fileOutputStream.open("loop_closures.txt", std::ofstream::out);
@@ -66,7 +67,7 @@ SubmapsVec BathySlam::runOffline(SubmapsVec& submaps_gt, GaussianGen& transSampl
             }
 
             // Register overlapping submaps
-            submap_trg = gicp_reg_->constructTrgSubmap(submaps_reg, submap_i.overlaps_idx_);
+            submap_trg = gicp_reg_->constructTrgSubmap(submaps_reg, submap_i.overlaps_idx_, dr_noise);
             if (add_gaussian_noise) {
                 addNoiseToSubmap(transSampler, rotSampler, submap_i); // Add disturbance to source submap
             }

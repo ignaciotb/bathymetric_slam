@@ -52,10 +52,10 @@ void SubmapRegistration::loadConfig(YAML::Node config){
     normal_search_radius = config["gicp_normal_search_radius"].as<double>();
 }
 
-SubmapObj SubmapRegistration::constructTrgSubmap(const SubmapsVec& submaps_set, std::vector<int>& overlaps){
+SubmapObj SubmapRegistration::constructTrgSubmap(const SubmapsVec& submaps_set, std::vector<int>& overlaps, const DRNoise& dr_noise){
 
     // Merge submaps in overlaps into submap_trg
-    SubmapObj submap_trg;
+    SubmapObj submap_trg(dr_noise);
     std::cout << "Target submap consists of: ";
     for(SubmapObj submap_j: submaps_set){
         if(std::find(overlaps.begin(), overlaps.end(), submap_j.submap_id_) != overlaps.end()){

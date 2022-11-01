@@ -54,7 +54,7 @@ public:
 
     void transformSubmap(SubmapObj& submap);
 
-    SubmapObj constructTrgSubmap(const SubmapsVec& submaps_set, std::vector<int> &overlaps);
+    SubmapObj constructTrgSubmap(const SubmapsVec& submaps_set, std::vector<int> &overlaps, const DRNoise& dr_noise);
 
     double consistencyErrorOverlap(const SubmapObj& trg_submap, const SubmapObj& src_submap);
 
