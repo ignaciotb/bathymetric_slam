@@ -1,6 +1,6 @@
 # Point cloud downsampling (m)
-downsampling_leaf_x: 10.
-downsampling_leaf_y: 10.
+downsampling_leaf_x: 2.
+downsampling_leaf_y: 2.
 downsampling_leaf_z: .5
 
 # Bathy SLAM params
@@ -12,14 +12,15 @@ overlap_coverage: 0.9 # Reduce submap area to look for overlap by this factor
 
 
 # GICP registration params (meters)
-gicp_max_correspondence_distance: 10
+gicp_max_correspondence_distance: 50
 gicp_maximum_iterations: 100
-gicp_transform_epsilon: 1e-4
-gicp_euclidean_fitness_epsilon: 1e-4
-gicp_ransac_outlier_rejection_threshold: 1
-gicp_normal_use_knn_search: false
+gicp_transform_epsilon: 1e-5
+gicp_euclidean_fitness_epsilon: 1e-5
+gicp_ransac_outlier_rejection_threshold: .5
+gicp_normal_use_knn_search: true
 gicp_normal_search_radius: 20 # used if gicp_normal_use_knn_search = false
-gicp_normal_search_k_neighbours: 100 # used if gicp_normal_use_knn_search = true
+gicp_normal_search_k_neighbours: 50 # used if gicp_normal_use_knn_search = true
+gicp_info_diag: [10000.0, 10000.0, 10000.0, 1000.0]
 
 # DR weights - uncertainty on vehicle navigation across submap
 dr_noise_x: 3.

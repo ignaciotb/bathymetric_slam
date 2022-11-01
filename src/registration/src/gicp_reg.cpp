@@ -49,6 +49,7 @@ void SubmapRegistration::loadConfig(YAML::Node config){
     normal_use_knn_search = config["gicp_normal_use_knn_search"].as<bool>();
     normal_search_radius = config["gicp_normal_search_radius"].as<double>();
     normal_search_k_neighbours = config["gicp_normal_search_k_neighbours"].as<int>();
+    info_diag_values = config["gicp_info_diag"].as<std::vector<double>>();
 }
 
 SubmapObj SubmapRegistration::constructTrgSubmap(const SubmapsVec& submaps_set, std::vector<int>& overlaps, const DRNoise& dr_noise){
@@ -162,8 +163,8 @@ bool SubmapRegistration::gicpSubmapRegistration(SubmapObj& trg_submap, SubmapObj
 
     // Set GICP information matrix
     src_submap.submap_lc_info_.setZero();
-    Eigen::VectorXd info_diag(4);
-    info_diag << 10000.0, 10000.0, 10000.0, 1000.0;
+    Eigen::VectorXd info_diag = Eigen::Map<Eigen::Vector4d>(info_diag_values.data());
+    std::cout << "GICP info diag: " << info_diag << std::endl;
     src_submap.submap_lc_info_.bottomRightCorner(4,4) = info_diag.asDiagonal();
 
     Eigen::Matrix3d rot = ret_tf_.topLeftCorner(3,3).cast<double>();

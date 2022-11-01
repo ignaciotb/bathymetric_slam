@@ -71,6 +71,7 @@ GaussianGen& transSampler, GaussianGen& rotSampler, YAML::Node config) {
 
 // Create initial graph estimates, optionally add gaussian noise if add_gaussian_noise = true
 void create_initial_graph_estimate(GraphConstructor& graph_obj, SubmapsVec& submaps_reg, GaussianGen& transSampler, GaussianGen& rotSampler, bool add_gaussian_noise) {
+    std::cout << "Add gaussian noise = " << add_gaussian_noise << std::endl;
     if (add_gaussian_noise) {
         // Add noise to edges on the graph
         graph_obj.addNoiseToGraph(transSampler, rotSampler);

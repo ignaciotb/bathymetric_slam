@@ -43,6 +43,7 @@ private:
     bool normal_use_knn_search;
     double normal_search_radius;
     int normal_search_k_neighbours;
+    std::vector<double> info_diag_values;
 
 public:
 
