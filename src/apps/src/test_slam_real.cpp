@@ -59,7 +59,7 @@ SubmapsVec build_bathymetric_graph(GraphConstructor& graph_obj, SubmapsVec& subm
 GaussianGen& transSampler, GaussianGen& rotSampler, YAML::Node config) {
 
     // GICP reg for submaps
-    SubmapRegistration gicp_reg;
+    SubmapRegistration gicp_reg(config);
 
     // Create SLAM solver and run offline
     std::cout << "Building bathymetric graph with GICP submap registration" << std::endl;

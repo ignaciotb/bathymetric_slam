@@ -46,7 +46,7 @@ private:
 
 public:
 
-    SubmapRegistration();
+    SubmapRegistration(YAML::Node config);
 
     void loadConfig(YAML::Node config);
 

@@ -18,7 +18,7 @@ using PointsT = std::vector<Eigen::MatrixXd, Eigen::aligned_allocator<Eigen::Mat
 
 
 
-SubmapRegistration::SubmapRegistration(){
+SubmapRegistration::SubmapRegistration(YAML::Node config){
 
     ret_tf_ = Eigen::Matrix4f::Identity();
     benchmark_ = benchmark::track_error_benchmark();
@@ -33,10 +33,7 @@ SubmapRegistration::SubmapRegistration(){
     gicp_.setTransformationEstimation(te);
 
     // GICP parameters
-    gicp_.setMaxCorrespondenceDistance(10);
-    gicp_.setTransformationEpsilon (1e-4);
-//    gicp_.setEuclideanFitnessEpsilon(1e-5);
-    gicp_.setMaximumIterations(200);
+    loadConfig(config);
 }
 
 SubmapRegistration::~SubmapRegistration(){
@@ -107,8 +104,10 @@ bool SubmapRegistration::gicpSubmapRegistration(SubmapObj& trg_submap, SubmapObj
     pcl::search::KdTree<PointT>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ> ());
     ne.setSearchMethod(tree);
     if (normal_use_knn_search) {
+        std::cout << "Using KNN search with K neighbours: " << normal_search_k_neighbours << std::endl;
         ne.setKSearch(normal_search_k_neighbours);
     } else {
+        std::cout << "Use radius search with radius: " << normal_search_radius << std::endl;
         ne.setRadiusSearch(normal_search_radius);
     }
 
