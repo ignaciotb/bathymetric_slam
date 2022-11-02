@@ -1,6 +1,6 @@
 # Benchmark imap size
-benchmark_nbr_rows: 10
-benchmark_nbr_cols: 100
+benchmark_nbr_rows: 600
+benchmark_nbr_cols: 600
 
 # Point cloud downsampling (m)
 downsampling_leaf_x: 2.
@@ -23,16 +23,16 @@ gicp_euclidean_fitness_epsilon: 1e-5
 gicp_ransac_outlier_rejection_threshold: .5
 gicp_normal_use_knn_search: true
 gicp_normal_search_radius: 20 # used if gicp_normal_use_knn_search = false
-gicp_normal_search_k_neighbours: 50 # used if gicp_normal_use_knn_search = true
+gicp_normal_search_k_neighbours: 20 # used if gicp_normal_use_knn_search = true
 gicp_info_diag: [10000.0, 10000.0, 10000.0, 1000.0]
 
 # DR weights - uncertainty on vehicle navigation across submap
 dr_noise_x: 3.
 dr_noise_y: 3.
-dr_noise_z: 1e-4
-dr_noise_roll: 1e-4
-dr_noise_pitch: 1e-4
-dr_noise_yaw: 1e-4
+dr_noise_z: 1e-9
+dr_noise_roll: 1e-9
+dr_noise_pitch: 1e-9
+dr_noise_yaw: 1e-5
 
 # Loop closure edge covariance computation method
 # 0 = fixed external value
