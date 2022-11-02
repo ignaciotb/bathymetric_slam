@@ -247,6 +247,10 @@ int main(int argc, char** argv){
         }
     }
     delete(visualizer);
+    for (int i = 0; i < 10; i ++) {
+        add_benchmark(submaps_gt, benchmark, "gt_" + std::to_string(i));
+        add_benchmark(submaps_reg, benchmark, "reg_" + std::to_string(i));
+    }
     print_benchmark_results(submaps_reg, benchmark);
 #endif
 
