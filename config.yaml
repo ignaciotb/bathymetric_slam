@@ -1,3 +1,7 @@
+# Benchmark imap size
+benchmark_nbr_rows: 10
+benchmark_nbr_cols: 100
+
 # Point cloud downsampling (m)
 downsampling_leaf_x: 2.
 downsampling_leaf_y: 2.

@@ -199,7 +199,8 @@ int main(int argc, char** argv){
     // flag for adding gaussian noise to submaps and graph
     bool add_gaussian_noise = config["add_gaussian_noise"].as<bool>();
     
-    benchmark::track_error_benchmark benchmark("real_data");
+    benchmark::track_error_benchmark benchmark("real_data", config["benchmark_nbr_rows"].as<int>(), config["benchmark_nbr_cols"].as<int>());
+    std::cout << "Benchmark nbr rows and cols: " << benchmark.benchmark_nbr_rows << ", " << benchmark.benchmark_nbr_cols << std::endl;
 
 #if VISUAL != 1
     submaps_reg = build_bathymetric_graph(graph_obj, submaps_gt, transSampler, rotSampler, add_gaussian_noise);
