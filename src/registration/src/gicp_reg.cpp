@@ -95,6 +95,7 @@ double SubmapRegistration::consistencyErrorOverlap(const SubmapObj& trg_submap,
 
 
 bool SubmapRegistration::gicpSubmapRegistration(SubmapObj& trg_submap, SubmapObj& src_submap){
+    //N.B. this function modifies the src_submap when aligning it to
 
     // Copy the originals to work over them
     PointCloudT::Ptr src_pcl_ptr (new PointCloudT(src_submap.submap_pcl_));

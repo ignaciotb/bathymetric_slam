@@ -58,7 +58,7 @@ void add_benchmark(SubmapsVec& submaps, benchmark::track_error_benchmark& benchm
 
 void benchmark_gt(SubmapsVec& submaps_gt, benchmark::track_error_benchmark& benchmark) {
     // Benchmark GT
-    add_benchmark(submaps_gt, benchmark, "original", true);
+    add_benchmark(submaps_gt, benchmark, "0_original", true);
     ceres::optimizer::saveOriginalTrajectory(submaps_gt); // Save original trajectory to txt
     std::cout << "Visualizing original survey, press space to continue" << std::endl;
 }
@@ -224,23 +224,28 @@ int main(int argc, char** argv){
             switch (current_step)
             {
             case 1:
-                submaps_reg = build_bathymetric_graph(graph_obj, submaps_gt, transSampler, rotSampler, config);
-                visualizer->updateVisualizer(submaps_reg);
                 // Benchmark GT
                 benchmark_gt(submaps_gt, benchmark);
+                submaps_reg = build_bathymetric_graph(graph_obj, submaps_gt, transSampler, rotSampler, config);
+                visualizer->updateVisualizer(submaps_reg);
+                // Benchmark GT after GICP, the GT submaps have now been moved due to GICP registration
+                add_benchmark(submaps_gt, benchmark, "1_After_GICP_GT");
+                add_benchmark(submaps_reg, benchmark, "2_After_GICP_reg");
                 break;
             case 2:
+                add_benchmark(submaps_reg, benchmark, "3_Before_init_graph_estimates_reg");
                 create_initial_graph_estimate(graph_obj, submaps_reg, transSampler, rotSampler, add_gaussian_noise);
                 visualizer->plotPoseGraphG2O(graph_obj, submaps_reg);
                 // Benchmark corrupted (or not corrupted if add_gaussian_noise = false)
-                add_benchmark(submaps_reg, benchmark, "corrupted");
+                add_benchmark(submaps_reg, benchmark, "4_After_init_graph_estimates_reg");
                 break;
             case 3:
+                add_benchmark(submaps_reg, benchmark, "5_before_optimize_graph");
                 optimize_graph(graph_obj, submaps_reg, outFilename, argv[0], output_path);
                 // Visualize Ceres output
                 visualizer->plotPoseGraphCeres(submaps_reg);
                 // Benchmark Optimized
-                add_benchmark(submaps_reg, benchmark, "optimized");
+                add_benchmark(submaps_reg, benchmark, "6_optimized");
                 break;
             default:
                 break;
@@ -248,10 +253,12 @@ int main(int argc, char** argv){
         }
     }
     delete(visualizer);
+/*
     for (int i = 0; i < 10; i ++) {
         add_benchmark(submaps_gt, benchmark, "gt_" + std::to_string(i));
         add_benchmark(submaps_reg, benchmark, "reg_" + std::to_string(i));
     }
+*/
     print_benchmark_results(submaps_reg, benchmark);
 #endif
 
