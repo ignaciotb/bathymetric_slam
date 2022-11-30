@@ -36,7 +36,7 @@
 #include <pcl/filters/voxel_grid.h>
 
 #define INTERACTIVE 0
-#define VISUAL 1
+#define VISUAL 0
 
 using namespace Eigen;
 using namespace std;
@@ -203,10 +203,18 @@ int main(int argc, char** argv){
     std::cout << "Benchmark nbr rows and cols: " << benchmark.benchmark_nbr_rows << ", " << benchmark.benchmark_nbr_cols << std::endl;
 
 #if VISUAL != 1
-    submaps_reg = build_bathymetric_graph(graph_obj, submaps_gt, transSampler, rotSampler, add_gaussian_noise);
+    benchmark_gt(submaps_gt, benchmark);
+    submaps_reg = build_bathymetric_graph(graph_obj, submaps_gt, transSampler, rotSampler, config);
+    add_benchmark(submaps_gt, benchmark, "1_After_GICP_GT");
+    add_benchmark(submaps_reg, benchmark, "2_After_GICP_reg");
+
+    add_benchmark(submaps_reg, benchmark, "3_Before_init_graph_estimates_reg");
     create_initial_graph_estimate(graph_obj, submaps_reg, transSampler, rotSampler, add_gaussian_noise);
+    add_benchmark(submaps_reg, benchmark, "4_After_init_graph_estimates_reg");
+
+    add_benchmark(submaps_reg, benchmark, "5_before_optimize_graph");
     optimize_graph(graph_obj, submaps_reg, outFilename, argv[0], output_path);
-    benchmark_optimized(submaps_reg, benchmark);
+    add_benchmark(submaps_reg, benchmark, "6_optimized");
 #endif
 
     // Visualization
@@ -253,12 +261,6 @@ int main(int argc, char** argv){
         }
     }
     delete(visualizer);
-/*
-    for (int i = 0; i < 10; i ++) {
-        add_benchmark(submaps_gt, benchmark, "gt_" + std::to_string(i));
-        add_benchmark(submaps_reg, benchmark, "reg_" + std::to_string(i));
-    }
-*/
     print_benchmark_results(submaps_reg, benchmark);
 #endif
 
