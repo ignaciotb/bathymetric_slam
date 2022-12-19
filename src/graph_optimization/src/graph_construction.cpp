@@ -58,7 +58,8 @@ void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapOb
     // Generate loop closure edges
     VertexSE3* from = vertices_[submap_from.submap_id_];
     VertexSE3* to   = vertices_[submap_to.submap_id_];
-    Eigen::Isometry3d t = from->estimate().inverse() * submap_to.submap_tf_.cast<double>();
+    //Eigen::Isometry3d t = from->estimate().inverse() * submap_to.submap_tf_.cast<double>();
+    Eigen::Isometry3d t = submap_from.submap_tf_.cast<double>().inverse() * submap_to.submap_tf_.cast<double>();
     EdgeSE3* e = new EdgeSE3;
     e->setVertex(0, from);
     e->setVertex(1, to);
