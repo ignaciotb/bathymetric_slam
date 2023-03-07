@@ -27,6 +27,11 @@
 #include <data_tools/navi_data.h>
 #include <data_tools/transforms.h>
 
+#include <boost/algorithm/string.hpp>
+
+#include "yaml-cpp/parser.h"
+#include "yaml-cpp/yaml.h"
+
 using namespace std;
 using namespace Eigen;
 typedef std::vector<Eigen::MatrixXd, Eigen::aligned_allocator<Eigen::MatrixXd>> PointsT;
@@ -35,12 +40,16 @@ typedef pcl::PointXYZ PointT;
 typedef std::vector<Vector3d, aligned_allocator<Vector3d>> corners;
 typedef std::vector<Eigen::Matrix2d, Eigen::aligned_allocator<Eigen::Matrix2d> > covs;
 
+struct DRNoise{
+    double x, y, z;
+    double roll, pitch, yaw;
+};
+
 class SubmapObj{
 
 private:
 
 public:
-
     int submap_id_;
     int swath_id_;
     PointCloudT submap_pcl_;
@@ -51,13 +60,13 @@ public:
     Eigen::Matrix<double,6,6> submap_lc_info_;
     Eigen::MatrixXd auv_tracks_;
 
-    SubmapObj();
+    SubmapObj(const DRNoise& dr_noise);
 
-    SubmapObj(const unsigned int& submap_id, const unsigned int& swath_id, PointCloudT& submap_pcl);
+    SubmapObj(const unsigned int& submap_id, const unsigned int& swath_id, PointCloudT& submap_pcl, const DRNoise& dr_noise);
 
-    void findOverlaps(bool submaps_in_map_tf, std::vector<SubmapObj, Eigen::aligned_allocator<SubmapObj> > &submaps_set);
+    void findOverlaps(bool submaps_in_map_tf, std::vector<SubmapObj, Eigen::aligned_allocator<SubmapObj> > &submaps_set, double overlap_coverage);
 
-    Eigen::Matrix<double, 6, 6> createDRWeights();
+    Eigen::Matrix<double, 6, 6> createDRWeights(const DRNoise& dr_noise);
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
@@ -66,9 +75,9 @@ class MapObj: public SubmapObj{
 
 public:
 
-    MapObj();
+    MapObj(const DRNoise& dr_noise) : SubmapObj(dr_noise) {};
 
-    MapObj(PointCloudT& map_pcl);
+    MapObj(const DRNoise& dr_noise, PointCloudT& map_pcl) : SubmapObj(dr_noise) {};
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
@@ -102,29 +111,28 @@ void readSubmapFile(const string submap_str, PointCloudT::Ptr submap_pcl);
 
 std::vector<std::string> checkFilesInDir(DIR *dir);
 
-std::vector<SubmapObj, Eigen::aligned_allocator<SubmapObj> > readSubmapsInDir(const string& dir_path);
+std::vector<SubmapObj, Eigen::aligned_allocator<SubmapObj> > readSubmapsInDir(const string& dir_path, const DRNoise& dr_noise);
 
 Array3f computeInfoInSubmap(const SubmapObj& submap);
 
 SubmapsVec parseSubmapsAUVlib(std_data::pt_submaps& ss);
 
-std::tuple<MapObj, Isometry3d> parseMapAUVlib(std_data::pt_submaps& ss);
+std::tuple<MapObj, Isometry3d> parseMapAUVlib(std_data::pt_submaps& ss, const DRNoise& dr_noise);
 
-SubmapsVec parsePingsAUVlib(std_data::mbes_ping::PingsT& pings);
+SubmapsVec parsePingsAUVlib(std_data::mbes_ping::PingsT& pings, const DRNoise& dr_noise);
 
-SubmapsVec createSubmaps(SubmapsVec& pings, int submap_size);
-
-SubmapsVec createMap(SubmapsVec& pings, int submap_size);
+SubmapsVec createSubmaps(SubmapsVec& pings, int submap_size, const DRNoise& dr_noise); 
+SubmapsVec createMap(SubmapsVec& pings, int submap_size, const DRNoise& dr_noise);
 
 void transformSubmapObj(SubmapObj& submap, Isometry3f& poseDRt);
 
-std::pair<int, corners> getSubmapCorners(bool submaps_in_map_tf, const SubmapObj& submap);
+std::pair<int, corners> getSubmapCorners(bool submaps_in_map_tf, const SubmapObj& submap, double overlap_coverage);
 
 bool checkSubmapsOverlap(const corners submap_i_corners, const corners submap_k_corners);
 
 bool pointToLine(const Vector3d seg_a, const Vector3d seg_b, const Vector3d point_c);
 
-bool checkSubmapSize(const SubmapObj& submap_i);
+bool checkSubmapSize(const SubmapObj& submap_i, double overlap_coverage);
 
 template <typename T> int sgn(T val) {
     return (T(0) < val) - (val < T(0));
@@ -139,5 +147,7 @@ std::pair<Eigen::Matrix2d, Eigen::Matrix2d> readCovMatrix(const std::string& fil
 covs readCovsFromFiles(boost::filesystem::path folder);
 
 std::vector<std::vector<int> > readGTLoopClosures(string& fileName, int submaps_nb);
+
+DRNoise loadDRNoiseFromFile(YAML::Node config);
 
 #endif // SUBMAPS_HPP

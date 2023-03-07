@@ -10,9 +10,9 @@ BathySlam::~BathySlam(){
 
 }
 
-SubmapsVec BathySlam::runOffline(SubmapsVec& submaps_gt, GaussianGen& transSampler, GaussianGen& rotSampler){
-
-    SubmapObj submap_trg;
+SubmapsVec BathySlam::runOffline(SubmapsVec& submaps_gt, GaussianGen& transSampler, GaussianGen& rotSampler, YAML::Node config){
+    DRNoise dr_noise = loadDRNoiseFromFile(config);
+    SubmapObj submap_trg(dr_noise);
     SubmapsVec submaps_prev, submaps_reg;
     ofstream fileOutputStream;
     fileOutputStream.open("loop_closures.txt", std::ofstream::out);
@@ -31,7 +31,7 @@ SubmapsVec BathySlam::runOffline(SubmapsVec& submaps_gt, GaussianGen& transSampl
         }
 	// Submaps in map_frame?
 	bool submaps_in_map_tf = true;
-        submap_i.findOverlaps(submaps_in_map_tf, submaps_prev);
+        submap_i.findOverlaps(submaps_in_map_tf, submaps_prev, config["overlap_coverage"].as<double>());
         submaps_prev.clear();
 
     #if INTERACTIVE == 1
@@ -66,14 +66,18 @@ SubmapsVec BathySlam::runOffline(SubmapsVec& submaps_gt, GaussianGen& transSampl
             }
 
             // Register overlapping submaps
-            submap_trg = gicp_reg_->constructTrgSubmap(submaps_reg, submap_i.overlaps_idx_);
-            addNoiseToSubmap(transSampler, rotSampler, submap_i); // Add disturbance to source submap
+            submap_trg = gicp_reg_->constructTrgSubmap(submaps_reg, submap_i.overlaps_idx_, dr_noise);
+            if (config["add_gaussian_noise"].as<bool>()) {
+                addNoiseToSubmap(transSampler, rotSampler, submap_i); // Add disturbance to source submap
+            }
+
             if(gicp_reg_->gicpSubmapRegistration(submap_trg, submap_i)){
                 submap_final = submap_i;
             }
             submap_trg.submap_pcl_.clear();
 
             // Create loop closures
+            graph_obj_->edge_covs_type_ = config["lc_edge_covs_type"].as<int>();
             graph_obj_->findLoopClosures(submap_final, submaps_reg, info_thres);
         }
         submaps_reg.push_back(submap_final);    // Add registered submap_i

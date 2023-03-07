@@ -28,8 +28,11 @@
 
 #include "data_tools/benchmark.h"
 
+#include "yaml-cpp/parser.h"
+#include "yaml-cpp/yaml.h"
+
 typedef std::vector<Eigen::Matrix3d, Eigen::aligned_allocator<Eigen::Matrix3d> > CovsVec;
-typedef boost::shared_ptr <CovsVec > CovsVecPtr;
+typedef std::shared_ptr <CovsVec > CovsVecPtr;
 
 class SubmapRegistration {
 
@@ -37,10 +40,16 @@ private:
     pcl::GeneralizedIterativeClosestPoint<PointT, PointT> gicp_;
     Eigen::Matrix4f ret_tf_;
     benchmark::track_error_benchmark benchmark_;
+    bool normal_use_knn_search;
+    double normal_search_radius;
+    int normal_search_k_neighbours;
+    std::vector<double> info_diag_values;
 
 public:
 
-    SubmapRegistration();
+    SubmapRegistration(YAML::Node config);
+
+    void loadConfig(YAML::Node config);
 
     bool gicpSubmapRegistration(SubmapObj &trg_submap, SubmapObj &src_submap);
 
@@ -48,7 +57,7 @@ public:
 
     void transformSubmap(SubmapObj& submap);
 
-    SubmapObj constructTrgSubmap(const SubmapsVec& submaps_set, std::vector<int> &overlaps);
+    SubmapObj constructTrgSubmap(const SubmapsVec& submaps_set, std::vector<int> &overlaps, const DRNoise& dr_noise);
 
     double consistencyErrorOverlap(const SubmapObj& trg_submap, const SubmapObj& src_submap);
 

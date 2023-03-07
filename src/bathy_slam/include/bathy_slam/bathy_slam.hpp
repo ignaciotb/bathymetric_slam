@@ -18,7 +18,7 @@ public:
     BathySlam(GraphConstructor& graph_obj, SubmapRegistration& gicp_reg);
     ~BathySlam();
 
-    SubmapsVec runOffline(SubmapsVec &submaps_gt, GaussianGen &transSampler, GaussianGen &rotSampler);
+    SubmapsVec runOffline(SubmapsVec &submaps_gt, GaussianGen &transSampler, GaussianGen &rotSampler, YAML::Node config);
 };
 
 

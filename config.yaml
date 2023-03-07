@@ -1,0 +1,42 @@
+# Benchmark imap size
+benchmark_nbr_rows: 200
+benchmark_nbr_cols: 1000
+
+# Point cloud downsampling (m)
+downsampling_leaf_x: .2
+downsampling_leaf_y: .2
+downsampling_leaf_z: .1
+
+# Bathy SLAM params
+submap_size: 500 # nbr_pings per submap
+add_gaussian_noise: false
+
+# Submap overlaps
+overlap_coverage: 0.9 # Reduce submap area to look for overlap by this factor
+
+
+# GICP registration params (meters)
+gicp_max_correspondence_distance: 20
+gicp_maximum_iterations: 200
+gicp_transform_epsilon: 1e-3
+gicp_euclidean_fitness_epsilon: 1e-3
+gicp_ransac_outlier_rejection_threshold: 1
+gicp_normal_use_knn_search: true
+gicp_normal_search_radius: 20 # used if gicp_normal_use_knn_search = false
+gicp_normal_search_k_neighbours: 20 # used if gicp_normal_use_knn_search = true
+gicp_info_diag: [10000.0, 10000.0, 10000.0, 1000.0]
+
+# DR weights - uncertainty on vehicle navigation across submap
+dr_noise_x: 5.
+dr_noise_y: 5.
+dr_noise_z: 1.
+dr_noise_roll: 1e-4
+dr_noise_pitch: 1e-4
+dr_noise_yaw: 1e-2
+
+# Loop closure edge covariance computation method
+# 0 = fixed external value
+# 1 = manual inputs (#TODO: factor out to YAML file)
+# 2 = covariances from GICP
+# 3 = covariances loaded from external file
+lc_edge_covs_type: 2

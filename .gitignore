@@ -3,6 +3,7 @@
 *.autosave
 
 # Folders
+experiments/*
 bin/*
 build/*
 install/*

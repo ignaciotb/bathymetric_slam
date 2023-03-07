@@ -55,6 +55,7 @@ target_link_libraries(gicp_registration PUBLIC
     submaps_tools
     benchmark
     ${PCL_LIBRARIES}
+    ${YAML_CPP_LIBRARIES}
 )
 
 # 'make install' to the correct locations (provided by GNUInstallDirs).
