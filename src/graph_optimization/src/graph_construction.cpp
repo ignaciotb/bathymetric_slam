@@ -51,6 +51,7 @@ void GraphConstructor::createDREdge(const SubmapObj& submap){
 }
 
 
+// Important: select method for computing edge's weight
 void GraphConstructor::createLCEdge(const SubmapObj& submap_from, const SubmapObj& submap_to){
 
     std::cout << "LC edge from " << submap_from.submap_id_ << " to " << submap_to.submap_id_ << std::endl;
